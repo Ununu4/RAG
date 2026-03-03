@@ -1,0 +1,47 @@
+# LENDER: blade
+
+## funding_guidelines
+*   **General Funding (2nd to 5th Position):**
+    *   Minimum Funding Amount: $20,000.00
+    *   Minimum Term: 80 days
+    *   Maximum Term: 160 days (may extend to 180 days case-by-case)
+    *   Monthly Gross Deposits: $50,000.00 or more
+    *   Payment Options: Daily or weekly payments
+*   **First Position Funding:**
+    *   Minimum Funding Amount: $50,000.00
+    *   Maximum Term: 160 days
+    *   Monthly Gross Deposits: $100,000.00 or more
+    *   Payment Options: Daily or weekly payments
+
+## eligibility_criteria
+*   **General Funding (2nd to 5th Position):**
+    *   Merchant Citizenship: U.S. citizen
+    *   Time in Business: 9 months or more
+    *   Monthly Gross Deposits: $50,000.00 or more
+    *   Funding for Past Defaults: Only considered if previous issues resolved
+    *   Negative Days/NSF: Maximum 5 days negative days per month (overdraft protection preferred)
+    *   Restricted Industries: Auto Dealerships, Real Estate Brokers, Cannabis, Financial institutions
+*   **First Position Funding:**
+    *   Merchant Citizenship: U.S. citizen
+    *   Time in Business: 24 months or more
+    *   FICO Score: Above 680
+    *   Monthly Gross Deposits: $100,000.00 or more
+    *   Funding for Past Defaults: No
+    *   Negative Days/NSF: Maximum 5 days total negative days over 3 months
+    *   Bankruptcies: Not allowed
+    *   Restricted Industries: Auto Dealerships, Real Estate Brokers, Cannabis, Financial institutions
+
+## deal_structure
+*   **Position Funding:** Available for First Position, and 2nd to 5th positions.
+*   **Payment Frequency:** Daily or weekly payments.
+*   **Term Length:** Minimum 80 days, Maximum 160 days (up to 180 days for general funding on a case-by-case basis).
+
+## key_findings
+*   **Two distinct funding tiers:** General funding (2nd-5th position) with more flexible criteria and First Position funding with stricter requirements.
+*   **General Funding Highlights:** Minimum $20k, 9+ months TIB, $50k+ monthly gross deposits. Past defaults considered if resolved.
+*   **First Position Highlights:** Minimum $50k, 24+ months TIB, 680+ FICO, $100k+ monthly gross deposits. No past defaults or bankruptcies allowed.
+*   **Common Exclusions:** Auto Dealerships, Real Estate Brokers, Cannabis, and Financial Institutions are restricted for both.
+*   **NSF Policy:** Both tiers allow a maximum of 5 negative days (per month for general, total over 3 months for first position).
+*   **Application Requirements:** Signed application, 3 months bank statements (4 months for CA/NY with disclosure).
+*   **Stipulated Documents:** Proof of ownership, driver's license, voided check, credit card statements (if applicable), AR report (if applicable), tax returns may be required.
+*   **ISO Requirements:** Signed ISO Agreement, Completed W-9 Form, Owner's Driver's License, and Voided Check.

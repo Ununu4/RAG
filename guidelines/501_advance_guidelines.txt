@@ -1,0 +1,30 @@
+# LENDER: 501_advance
+
+## funding_guidelines
+*   **Commissions:** 12%-14%, with monthly bonuses available.
+*   **Terms:** 12 Months with Daily or weekly payments.
+*   **Daily Ledgers Requirement:** $1,000.
+
+## eligibility_criteria
+*   **Minimum Monthly Revenue:** $20,000.
+*   **Minimum Monthly Revenue (Construction):** $50,000.
+*   **FICO Score:** 550+.
+*   **Time in Business (TIB):** 1 Year.
+*   **Negative Bank Days (NSFs/Negs):** Maximum 4.
+*   **Bank Deposits:** Minimum 4 per month.
+*   **Defaults:** No Defaults allowed.
+*   **Restricted States:** California (CA), Hawaii (HI), Puerto Rico (PR).
+*   **Prohibited Industries:** Commission based revenue, Auto Sales, Financial Firms, Transportation.
+
+## deal_structure
+*   **Position:** 2nd Position+.
+*   **Payment Structure:** Daily or weekly payments.
+*   **Term Length:** 12 Months.
+*   **Buyouts/Payoffs:** Available for qualified merchants.
+
+## key_findings
+*   **Target Market:** Merchants requiring 2nd position or higher funding, including options for buyouts/payoffs.
+*   **Key Minimums:** $20,000 monthly revenue ($50,000 for construction), FICO 550+, 1 year TIB.
+*   **Bank Health:** Max 4 negative bank days, min 4 monthly deposits, and no prior defaults.
+*   **Exclusions:** Funding is restricted in CA, HI, PR, and prohibited for auto sales, financial firms, transportation, and commission-based revenue industries.
+*   **Broker Compensation:** Attractive commissions of 12-14% with additional monthly bonuses.

@@ -1,0 +1,41 @@
+# LENDER: bellwether
+
+## funding_guidelines
+- **Funding Range**: $20,000.00 - $200,000.00
+- **Term Length**: 1 month (20 days) to 6 months (120 days)
+- **Repayment**: Daily/Weekly
+- **Early Pay Off Discounts**: Yes
+- **Syndication Options**: Yes, up to 50%
+- **Renewals**: Pays full commission
+
+## eligibility_criteria
+- **Time in Business**: 12 Months minimum
+- **FICO**: Above 550
+- **Positions**: 2nd positions +
+- **Monthly Gross Deposits**: $40,000 (General), $200,000 (Trucking)
+- **Deposit Frequency**: 5 Deposits minimum
+- **Negative Days/NSFs**: Max 4 negative days per month, Overdraft protection preferred
+- **Bankruptcies**: None within the last 5 years
+- **Tax Liens**: Yes, if payment plan required
+- **Judgments**: Yes, if satisfied within reasonable time frame
+- **Rent Status**: Current
+- **Hard Industry Restrictions**: Law, Auto, Real Estate, Non-profit
+- **Preferred Industries**: Healthcare, Restaurants, Professional Services
+- **Required Stipulations**: State or federal ID, Voided Check
+- **Submission Requirements**: 4 months bank statements + Application
+- **Month to Date**: Required after the 14th
+- **Bank Verification**: Manual login, or decision logic
+
+## deal_structure
+- Funding available for businesses in 2nd position or higher.
+- Short-term funding with duration ranging from 1 month (20 days) to 6 months (120 days).
+- Repayments are structured on a daily or weekly basis.
+- Early pay off discounts are offered.
+- Syndication options are available for up to 50% of the deal.
+
+## key_findings
+- **Minimum Requirements**: 12 months in business, FICO above 550, and $40,000 in monthly gross deposits ($200,000 for trucking).
+- **Funding Scope**: Offers $20,000 to $200,000 in funding with terms between 1 and 6 months, repaid daily or weekly.
+- **Flexibility**: Accommodates 2nd position funding, up to 4 negative days/NSFs per month (overdraft protection preferred), tax liens (with payment plan), and satisfied judgments.
+- **Industry Focus**: Avoids Law, Auto, Real Estate, and Non-profit industries; prefers Healthcare, Restaurants, and Professional Services.
+- **Broker Benefits**: Pays full commission on renewals, offers early pay-off discounts, and allows syndication up to 50%.

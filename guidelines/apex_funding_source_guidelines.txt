@@ -1,0 +1,54 @@
+# LENDER: apex_funding_source
+
+## funding_guidelines
+- Minimum funding amount on new deals: $25,000.
+- Sell rates generally apply 95% of the time, exceptions on select deals.
+- General sell rate rules:
+    - 1.499 pays 12
+    - 1.45 pays 10
+    - 1.42 pays 9
+    - 1.399/1.4 pays 8
+    - 1.37 pays 6 (with 4% bank fee; may pay 5 with a lower bank)
+- Lower sell rates are on a deal-by-deal basis.
+
+## eligibility_criteria
+- **Revenue:**
+    - Rarely make offers for businesses under $125,000 - $150,000 per month (industry-dependent).
+    - Some industries: $100,000 per month is sufficient; more risky industries: $150,000 per month.
+    - Revenue must be real (excludes funding, transfers, returns).
+- **Position:**
+    - Not a first position lender.
+    - Will generally not make an offer for first position unless revenue is $1,000,000 per month or higher.
+    - Most aggressive in the 3rd - 6th position space.
+    - For 2nd, 3rd position and up: main focus is payment history; credit is less of an issue if good MCA pay history.
+    - Only weekly or daily payment positions are counted as payment history; monthly payments or lines of credit are not considered MCA's.
+- **Quick Stacking / Short Payment History:**
+    - Decline if merchant just got first position in the past few days or weeks.
+    - Decline if merchant has stacked more than 2 or 3 deals in the last month or so.
+- **Daily Balances:**
+    - Decline if merchant has more than 4 or 5 NSFs per month with no overdraft protection and items are getting returned.
+    - Balances under $1,000 will be considered NSFs.
+- **Restricted Industries (Highly Selective or Almost Never Fund):**
+    - Trucking (extremely selective)
+    - Real Estate (very selective)
+    - Solar (almost do not fund at all)
+    - Seafood (fisheries, not restaurants - almost do not fund at all)
+    - Auto Sales (almost do not fund at all)
+    - Restaurants (stopped funding at beginning of COVID, now easing back in, less aggressive, but exceptions exist)
+- **Restricted States:**
+    - California & New York: Tighter guidelines, only larger/cleaner files. May require proof of 2 offers proposed to merchant upon docs request.
+    - Virginia: Newly licensed, not yet funding, process TBD.
+    - Utah: Waiting on licensing.
+- **Main decline reasons:** Industry, Position, Revenue.
+
+## deal_structure
+- Deals are primarily structured for 3rd to 6th position.
+- Fixed "sell rates" are used, not buy rates, to determine the deal structure and payments (e.g., 1.499 for 12 payments).
+- Positions are counted based on weekly or daily payments.
+
+## key_findings
+- **Position Focus:** Apex is primarily a 3rd-6th position lender, rarely funding 1st position unless revenue exceeds $1M/month.
+- **Revenue Requirements:** Strict minimums of $125k-$150k/month in real revenue; funding, transfers, or returns do not count.
+- **Payment History:** Strong MCA payment history (weekly or daily) is crucial for deals in 2nd position and higher; traditional credit is less impactful here.
+- **Stacking/Risk:** Avoid merchants with recent 1st positions or those who have stacked more than 2-3 deals in the last month. Watch for frequent NSFs (4-5+ per month, including sub-$1k balances).
+- **Restricted List:** Many industries (Trucking, Real Estate, Solar, Seafood, Auto Sales, and to some extent, Restaurants) are highly selective or outright declined. Specific state restrictions apply in CA, NY, VA, UT.

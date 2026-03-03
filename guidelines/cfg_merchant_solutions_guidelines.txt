@@ -1,0 +1,25 @@
+# LENDER: cfg_merchant_solutions
+
+## funding_guidelines
+Not specified.
+
+## eligibility_criteria
+*   **Revenue:** $10,000+ true monthly revenue (general); $50,000+ monthly revenue for 1st position trucking files.
+*   **Time in Business (TIB):** 1 Year+
+*   **Credit:** Credit score is not a factor.
+*   **Bank Health:** Maximum 6 negative days in the most recent month.
+*   **Industry Specific:** Trucking files must have factoring.
+
+## deal_structure
+*   **Position:** Funds 2nd, 3rd, and 4th position paper/files.
+*   **Position (Trucking Exception):** Will consider 1st position for trucking files with $50,000+ monthly revenue and factoring.
+*   **Exclusions:** No deals in a "reverse."
+
+## key_findings
+*   Funds 2nd, 3rd, and 4th position.
+*   Minimum $10,000+ monthly true revenue.
+*   TIB must be 1 Year+.
+*   Credit score is disregarded.
+*   Max 6 negative bank days in the most recent month.
+*   Trucking deals require factoring, and can be 1st position if $50,000+ monthly revenue.
+*   No "reverse" deals funded.

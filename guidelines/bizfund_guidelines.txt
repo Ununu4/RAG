@@ -1,0 +1,50 @@
+# LENDER: bizfund
+
+## funding_guidelines
+Funding: $5,000 - $500,000
+Term: 3 - 12 Months
+Positions: 1st - 3rd
+Payment Frequency: Daily & Weekly
+Early Payoff Options (EP):
+    30-Days: 15 Points Off Sell Rate (Example: 1.20 payback on 1.35, saving 15K on 100K funding)
+    60-Days: 10 Points Off Sell Rate (Example: 1.25 payback on 1.35, saving 10K on 100K funding)
+    90-Days: 5 Points Off Sell Rate (Example: 1.30 payback on 1.35, saving 5K on 100K funding)
+
+## eligibility_criteria
+Minimum Credit: 550+
+Negative Days Per Month: <5
+Federal Tax Liens: No Limitations
+State Tax Liens: > $100K (May Need Coverage)
+Ownership % Minimum: 50%
+Time in Business: 1 year
+BKs: Must Be Discharged or Dismissed
+Minimum Deposit Volume: $20K/month
+Minimum Avg. Daily Balances: $1K Minimum
+Deposits: Minimum 3/month
+Restricted Areas: Miami-Dade County, PR, LA
+Auto Decline: 4 or more positions
+
+Unique Industries Funded: Trucking ($60K min rev/month), Non-Profits, Gas Stations/Oil Related, Attorneys, Insurance Agencies, Staffing, Travel Agencies, Wireless Stores, CPAs, Places of Worship (case by case).
+
+Prohibited Industries: Car Dealerships, Adult, Entertainment, Collection Agencies, Credit Bureaus, Publicly Traded Companies, Lenders, Gambling, Bail Bonds, Blood Banks, Pawn Shops, Nail Salons, Real Estate.
+
+## deal_structure
+Product Type: Merchant Cash Advance (MCA) indicated by "Sell Rate" and "Payback" terminology.
+Offers: Hard Offers Upfront
+Credit Pull: Soft Pulls Only
+No COJs (Confessions of Judgment)
+Customized Quoting
+No State Restrictions (for general eligibility)
+Stipulations Upfront: Signed Application, 3-Months Bank Statements
+Stipulations Before Funding: Bank Verification, Drivers License, Voided Check, Merchant Interview
+No Financials Required for deals < $350K
+No Landlord Verification Needed
+
+## key_findings
+Funding available from $5,000 to $500,000 with terms ranging from 3 to 12 months, accepting positions up to 3rd.
+Minimum credit score of 550+ is required, along with a minimum of 1 year in business.
+Key financial requirements include a minimum of $20K/month in deposit volume, $1K average daily balances, and at least 3 deposits per month, with less than 5 negative days.
+Crucially, no financials are required for deals under $350K, simplifying the submission process for smaller advances.
+Offers are provided upfront based on soft pulls, and no Confessions of Judgment (COJs) are used.
+Early payoff discounts are available at 30, 60, and 90 days.
+A broad range of industries are considered, including specific unique niches, but a detailed list of prohibited industries is provided (e.g., adult, gambling, real estate, car dealerships). Restricted geographical areas are Miami-Dade County, PR, and LA.

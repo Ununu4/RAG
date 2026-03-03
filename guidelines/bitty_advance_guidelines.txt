@@ -1,0 +1,45 @@
+# LENDER: bitty_advance
+
+## funding_guidelines
+*   **New Funding:** $2,000 - $75,000
+*   **Renewal Funding:** Up to $250,000
+*   **Gold Product:** 130 payments, 1.49 factor, 12% commission, 20-35% remit.
+*   **Silver Product:** 120 payments, 1.55 factor, 12% commission, 20-30% remit.
+*   **Bronze Product:** 110 payments, 1.59 factor, 8% commission, 20-30% remit.
+*   **Copper Product:** 80 payments, 1.59 factor, 8% commission, 18-30% remit.
+*   **Upsell:** 4% minimum upsell required on Retention Pricing.
+
+## eligibility_criteria
+*   **Time In Business:**
+    *   Gold: 12+ months.
+    *   Silver, Bronze, Copper: 6+ months.
+    *   Auto Decline: Less than 6 months.
+*   **Credit Score (FICO):**
+    *   Gold: 650+.
+    *   Silver: 600+.
+    *   Bronze: 551+.
+    *   Copper: 450+.
+    *   Auto Decline: FICO < 450.
+*   **Revenue:**
+    *   Gold: $40,000/month average.
+    *   Silver, Bronze: $5,000/month average.
+    *   Copper: $10,000/month average.
+*   **Business Checking:** Required.
+*   **Business Location/Website:** Required. Home-based applicants need an online presence.
+*   **UCCs/Judgments:** No unresolved cash advance UCCs or business funding Judgments.
+*   **Negative Days (Auto Decline):** 7+ in recent month, 14+ in last 2 months, 21+ in previous 3 months.
+*   **Industry Specific:** Risk-based pricing applied.
+*   **Preferred Industries:** Advertising, Agriculture, Forestry, Fishing, Ambulance, Architectural/Engineering, Assisted Facility, Auto Repair, Barber Shops, Beauty Salons, Car Rental, Car Wash, Child Day Care, Computer Systems Design, Cosmetics/Hair Extensions/Supply, CPA Office/Accountant, Dentist, Doctor/Physician/Specialist, Drinking Alcohol, Driving School, Drycleaner/Laundry, Employment/Staffing, Fitness Center, Florist, Food Truck, Furniture/Home Retail, Gas Station, Graphic Design, Grocery/Food/Beverage Retail, Guns, Home Health Care, Insurance, Interior Design, Janitorial, Lab/Imaging, Landscaping, Lawyer, Manufacturing, Mental Health, Mortgage Broker, Nail Salon, Oil/Gas Support Activities, Other Information, Other Legal Services, Pest, Pet Care, Photography, Real Estate Lessor, Restaurant - Full-service, Restaurant - Limited-service, Septic Tank, Spa/Tattoo/Wax, Sports/Hobby/Music Retail, Sports/Recreation Instruction, Telecommunications, Tobacco/Vape, Trade Show/Convention, Travel Agency/Arrangement, Tutoring, Veterinary.
+*   **Standard Industries:** Accommodation, Appliance Repair, Auto Body Shop, Auto Dealer/New (100k min. revenue), Auto Parts/Tires, Boat/Marine, Cannabis (Core Bitty Only), Catering, Chiropractor, Clothing/Shoes/Accessories Retail, Construction (Carpentry, Electrician, Flooring, General Remodeler, New Home Builder, Other Unclassified, Painting, Plumbing/HVAC, Roofing, Site Prep/Excavation), Consulting - Management, Drywall, Electronics/Appliance Retail, Fine Arts School, Funeral Home, General Merchandise Retail, Health/Personal Care Retail, Investment Advisor, Jewelry, Marketing, Medical Transport (non-emergency), Movie/Music, Moving, Notary, Online Seller, Other Arts/Entertainment/Recreation, Other Education, Other Finance, Other Misc. Retail, Other Personal Services, Other Prof/Sci/Tech Services, Other Services Buildings Dwellings, Public Administration, Real Estate Agent/Broker, Real Estate/Other Activities, Rental Center/Consumer/General, Security Guard/Investigation, Security Systems, Solar, Taxi/Limo/Shuttle, Towing/Roadside, Trucking, T-shirt/Printing, Wholesale.
+*   **Prohibited Industries:** Bail Bonds, Crypto, Debt Collections, Gambling, Health Supplements, Money Service Businesses, Not-for-profit, Psychic Services, Religious, Grantmaking, Civic Organizations, Sexual content.
+
+## deal_structure
+*   Merchant Cash Advance (MCA) model with specified payments, factor rates, and remit percentages, structured into Gold, Silver, Bronze, and Copper product tiers.
+
+## key_findings
+*   Offers MCA products with funding from $2,000 up to $75,000 for new clients and up to $250,000 for renewals.
+*   Minimum eligibility includes 6+ months TIB and FICO 450+ (with higher requirements for larger advances).
+*   Monthly revenue requirements range from $5,000 to $40,000 depending on the product.
+*   Strict auto-decline criteria based on TIB, FICO score, and negative bank days.
+*   Requires a business checking account, a physical or demonstrable online business presence, and no unresolved UCCs or judgments.
+*   Provides clear lists of Preferred, Standard, and Prohibited industries.

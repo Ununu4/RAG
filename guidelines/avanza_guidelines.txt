@@ -1,0 +1,30 @@
+# LENDER: avanza
+
+## funding_guidelines
+- **Factor Rates:** Starting at 1.40.
+- **Broker Commission/Points:** 16 points up-sell.
+- **Net Funding:** Client must net 50% of the advance after buyouts.
+
+## eligibility_criteria
+- **Monthly Deposits:** Minimum $50,000 ($100,000 for Construction and some Utah merchants).
+- **Time in Business:** Minimum 1 year (3 years for Construction).
+- **Deposit Frequency:** Minimum 8 deposits per month.
+- **Geographic Restrictions:** No California; some Utah with $100k/month minimum.
+- **Prohibited Industries:** Attorneys, Trucking (due to economy), Auto Sales, Vape Shops.
+- **Accepted Industries:** Marijuana businesses.
+- **Credit History:** No defaults, even if paid off (except medical/healthcare).
+- **Application Process:** No credit pull to provide an offer.
+
+## deal_structure
+- **Product Type:** Merchant Cash Advance (implied).
+- **Positioning:** Will buyout up to 2 existing positions to take 1st position.
+
+## key_findings
+- **Minimum Monthly Deposits:** Generally $50,000, but $100,000 for Construction and certain Utah businesses.
+- **Minimum Time in Business:** 1 year (3 years for Construction).
+- **Strict Default Policy:** No past defaults accepted, even if paid off, with the sole exception of medical/healthcare defaults.
+- **Funds Marijuana:** Explicitly funds marijuana businesses.
+- **Broker Compensation:** 16 points up-sell is indicated.
+- **Application Documents:** Voided check, Driver's license.
+- **Funding Documents:** Proof of ownership (with percentage), 1 month Merchant Statement (if applicable), A/R report (if applicable).
+- **No Credit Pull:** Offers can be provided without a credit pull.

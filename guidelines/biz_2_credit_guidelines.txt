@@ -1,0 +1,34 @@
+# LENDER: biz_2_credit
+
+## funding_guidelines
+*   **A Paper:** Starting factor rate 1.20+ up to 18 months.
+*   **B Paper:** Starting factor rate 1.25+ up to 12 months.
+*   **C - D Paper:** Starting factor rate 1.30 + up to 8 months.
+*   Loan amounts are categorized for stipulations: up to 100k, 151k to 300k, and 301k and over.
+
+## eligibility_criteria
+*   **Monthly Bank Statements:** $40k+ monthly for the last 3 months.
+*   **Time in Business (TIB):** Minimum 2 years.
+*   **FICO Score:** Minimum 600.
+*   **NSFs:** Maximum 4 NSFs in the last 3 months.
+*   **Financials:** Required upfront for deals requesting $250k+ on longer terms.
+*   **Preferred Industries (Covid-19):** Grocery Stores / Convenience stores, Wholesale distribution to Grocery / Convenience stores, Gas stations / Wholesale fuel distribution, IT Consulting, Urgent Medical Care Clinics/ Doctor and Dentist office / Pharmacies / Veterinary Clinics / Health Benefits Administration - Claims / Wholesale distribution of core medical and veterinary supplies, Wireless stores, Home healthcare, Insurance (life, health, P&C), Animal Feed / Wholesale distribution of animal feed, Online business and retailers (Amazon, Shopify, Etsy deposits), Government Agency Critical Program IT Support Services, Liquor Stores / Liquor distribution – wholesale, UPS and FedEx Store franchisees.
+*   **Auto Decline Industries:** Used car dealership, Cannabis, Adults' entertainment, Real estate investors, Car Services, Construction, Sole Props.
+*   **Restricted Industries:**
+    *   **Trucking:** Only accepted if there are contracts with FedEx/Amazon/UPS.
+    *   Lawyers
+    *   Crypto
+
+## deal_structure
+*   Biz2Credit offers funding with factor rates (e.g., 1.20+, 1.25+, 1.30+) and specified terms in months, indicating a structure similar to an MCA or short-term loan.
+*   Deal offers are contingent on MTD (Month-to-Date) data for final approval before contracts are requested. Manual MTD is accepted but requires login for funding.
+*   Offers over $300k require both recent Tax Returns and MTD prior to requesting contracts.
+*   Stipulations vary by loan amount and for renewals versus new deals.
+
+## key_findings
+*   **Minimum Requirements:** $40k+ monthly revenue, 2+ years TIB, 600+ FICO, max 4 NSFs in 3 months.
+*   **Funding Parameters:** Factor rates start from 1.20+ (A Paper) with terms up to 18 months, decreasing to 1.30+ (C-D Paper) for up to 8 months.
+*   **Industry Focus:** Strong preference for specific stable industries (e.g., healthcare, grocery, IT consulting) and strict exclusions (e.g., cannabis, real estate investors, construction, sole props). Trucking, Lawyers, and Crypto are restricted.
+*   **Stipulation Tiers:** Required documentation significantly increases with loan amount, with $300k+ deals requiring tax returns and full financials upfront.
+*   **MTD Contingency:** All offers are contingent on MTD data, with login required even for manual MTD submissions, prior to contract generation and funding.
+*   **Renewals:** Follow similar stip guidelines to new deals, especially for amounts over $300k.

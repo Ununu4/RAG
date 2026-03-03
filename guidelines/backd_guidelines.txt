@@ -1,0 +1,42 @@
+# LENDER: backd
+
+## funding_guidelines
+*   **Working Capital:**
+    *   Amounts: $25,000 - $2,000,000
+    *   Terms: Up to 18 months
+    *   Additional: EPA on ALL Files, Special EPAs negotiable.
+*   **Line of Credit:**
+    *   Amounts: $50,000 - $750,000
+    *   Terms: 6 or 12 months
+    *   Additional: Tax returns required.
+
+## eligibility_criteria
+*   **Basic Requirements:**
+    *   Revenue: $100,000+ per month ($1.2M+ annual revenue)
+    *   Time in Business: Established business credit (1+ year for Working Capital, 2+ years for Line of Credit)
+    *   Credit Score: 650+ Personal Credit Score
+    *   Bank Activity: 10+ deposits per month, daily balance supporting monthly revenue, consistent revenue/deposit visibility.
+    *   Business Type: Verifiable business operation with a street view (physical location).
+*   **High Risk Minimum Annual Revenue (Specific Industries):**
+    *   Home Health: $3,000,000
+    *   Ecommerce: $3,000,000
+    *   Software: $5,000,000
+*   **Restricted Industries (Not Eligible):** Financial Services, Car Dealerships, Consulting/Marketing Services, Real Estate Services, Legal Services, Government or Non-profit Agencies, Flea Markets/Conventions/Events, Adult Entertainment, Cannabis, Firearms, Trucking/Transportation/Logistics, Solar, Wholesale, Pharmacies.
+*   **Auto Declines:**
+    *   Operating less than 12 months.
+    *   Operating account opened less than 6 months ago.
+    *   Merchant is over 10% in annual revenue with current positions (debt/liens).
+    *   Less than $100,000 in average monthly revenue.
+    *   Personal accounts.
+    *   Home-based businesses.
+    *   Prior defaults, judgments, or poor background check.
+
+## deal_structure
+*   **Working Capital:** Term loan (up to 18 months).
+*   **Line of Credit:** Revolving Line of Credit (6 or 12 months).
+
+## key_findings
+*   **Ideal Client Profile:** Businesses seeking $100K-$2M, with a tangible product, verifiable operation, physical street view, consistent revenue, 10+ deposits/month, sufficient daily balance, and a 650+ credit score.
+*   **Documentation Required (<$250K):** Proof of Ownership, Bank Verification, Confirmation of Balances or ZBL, Voided Check, Driver's License.
+*   **Documentation Required (>$250K):** Most Recent Tax Return, YTD P&L and/or Balance Sheet, Accounts Receivable (A/R), Merchant Interview, TruePic.
+*   **Exclusions are extensive:** A broad range of service industries, regulated industries, and home-based businesses are not eligible. Minimum operating history and revenue thresholds are strict, with auto-declines for operating less than 12 months or having an account opened less than 6 months.

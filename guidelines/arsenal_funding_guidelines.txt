@@ -1,0 +1,56 @@
+# LENDER: arsenal_funding
+
+## funding_guidelines
+*   **Typical Factor Terms:** 1.40-1.499
+*   **Typical Length of Advance:** 50-120 days
+*   **Commission Rate:** Calculated as Factor Rate minus Minimum Factor Rate.
+    *   1.48-1.499 Factor = 12% Commission
+    *   1.46-1.47 Factor = 11% Commission
+    *   1.44-1.45 Factor = 10% Commission
+    *   1.42-1.43 Factor = 9% Commission
+    *   1.40-1.41 Factor = 8% Commission
+    *   1.39 Factor = 7% Commission
+    *   1.38 Factor = 6% Commission
+    *   1.37 Factor = 5% Commission
+    *   1.36 Factor = 4% Commission
+    *   1.35 Factor = 3% Commission
+    *   1.34 Factor = 2% Commission
+    *   1.33 Factor = 1% Commission
+*   **Commission Payment:** One-time, lump sum "Up-Front Commission" paid no less than 4 days after Merchant receives Purchase Price. Company can withhold until 4 consecutive ACH debits are collected.
+*   **Clawback Policy (Commission):**
+    *   Commission is clawed back if Merchant defaults within the first 22 payments.
+    *   Commission is forfeited/clawed back if Merchant (a) breaches Receivables Purchase Agreement within 30 days from Purchase Date, or (b) has more than 3 ACH debit transactions rejected due to non-sufficient funds within 30 days from Purchase Date.
+    *   Clawback is enforced if Merchant blocks payments before 20 cleared payments, bounces >4 payments in first 30 days, bounces >2 payments in a row, or lowers payments within first 30 days without subsequent correction.
+    *   Clawback payment: Company requests money back within 2 days, or debits ISO's account.
+*   **Reduced Payoff Offered:** Yes
+*   **% of deal must be paid in before renewal:** 50-65%
+
+## eligibility_criteria
+*   **Minimum Credit Score:** 500 FICO
+*   **Time in Business:** 12 months minimum
+*   **Tax Liens:** Must be in a repayment plan
+*   **Ownership:** >50% ownership required
+*   **Late on MTG/Lease:** Needs to be current prior to funding
+*   **Bankruptcy:** Must be 1 Year Out from bankruptcy
+*   **NSF/Daily Balances:** Decline if 5+ NSFs on average per month are below payback
+*   **Home-Based Businesses:** Yes, funded.
+*   **Funding in California:** Yes
+*   **Funding Niche:** 2-6 position
+*   **Required Documents (Initial Submission):** Completed, physically signed and dated Application, 3 months bank statement.
+*   **Required Documents (for Funding):** Driver License, Voided Check, Business License, Most Recent Tax Return.
+*   **Restricted Industries:** Adult Ent., Airlines, Animal Breeders, Bail Bonds, Beauty Products, Car Dealers, Check Cashing, Collection Agency, Credit Protection, Cruise Ships, Dating/Escorts, Direct Marketing, Fortune Tellers, Gambling/Auction, Import/Export, Intangible Prod., Legal Services, Moving Companies, Non Profits, Online Pharmacies, Pawn Shops, Security/Bodyguard, Supplement Sales, Taxi/Limo Services, Time Shares, Travel Agencies.
+
+## deal_structure
+*   **Product Type:** Merchant Cash Advance (MCA)
+*   **Payment Frequency:** Daily (20-day months)
+*   **Competitor Balance Payoff Rule:** Merchant must net 40-50% of the funded amount after competitor payoffs.
+
+## key_findings
+*   **Quick Turnaround:** Less than 3 hours for typical file turnaround.
+*   **Low Credit Requirement:** Minimum 500 credit score.
+*   **Flexible with Home-Based Businesses:** Yes, they fund home-based businesses.
+*   **Strict Clawback Policy:** Commissions are clawed back if merchant defaults within the first 22 payments or for various other defaults (e.g., payment blocks, frequent NSFs, payment reductions) within the first 30 days. ISOs are expected to repay within 2 days or face direct debit.
+*   **Renewal Commissions:** ISOs can earn commissions on subsequent renewals of Funded Referred Merchants if they have referred at least one Funded Referred Merchant to the Company per month in the preceding six months.
+*   **Specific Documentation:** Clear list of required documents for both initial submission and funding.
+*   **Extensive Restricted Industries List:** Many industries are explicitly excluded.
+*   **California Funding:** Yes, they fund in California.

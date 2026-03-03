@@ -1,13 +1,36 @@
 # rag_qa.py
-import json, requests, textwrap, re
-from typing import List, Dict, Optional, Tuple
-from sentence_transformers import SentenceTransformer
+from __future__ import annotations
+import json
+import logging
+import re
+import textwrap
+import time
+import uuid
+from pathlib import Path
+from typing import Callable, Dict, List, Optional, Tuple
+
 import numpy as np
-from query_improved import semantic_query
+import requests
 from chromadb import PersistentClient
+from sentence_transformers import SentenceTransformer
+
+from query_improved import semantic_query
+
+from monitoring import (
+    CostAwareStrategy,
+    JsonFileStrategy,
+    LoggingStrategy,
+    PipelineMetrics,
+    clear_strategies,
+    get_logger,
+    notify,
+    register_strategy,
+    setup_logging,
+    timed,
+)
 
 OLLAMA_URL = "http://localhost:11434/api/chat"
-MODEL = "nous-hermes2:latest"  # or the tag you pulled
+MODEL = "nous-hermes2:latest"
 
 def _format_sources(results: Dict, max_chars_per_doc: int = 2000) -> str:
     lines = []
@@ -431,6 +454,11 @@ def _detect_collection_for_query(query: str, chroma_path: str, default_collectio
     return best_name if best_score > 0 else default_collection
 
 
+def _approx_tokens(text: str) -> int:
+    """Rough token estimate: ~4 chars per token."""
+    return max(0, len((text or "").strip()) // 4)
+
+
 def answer_query(
     query: str,
     collection: Optional[str],
@@ -444,11 +472,26 @@ def answer_query(
     collection_chars: int = 6000,
     num_ctx: int = 12288,
     num_predict: int = 512,
+    metrics: Optional[PipelineMetrics] = None,
 ) -> Dict:
+    m = metrics or PipelineMetrics()
+    m.query = query
+    m.run_id = str(uuid.uuid4())[:8]
+
     # 1) Retrieve top evidence (MMR + rerank + optional neighbor expansion)
     chosen_collection = collection or _detect_collection_for_query(
         query, chroma_path, default_collection="lender-alternative-funding-group"
     )
+    m.collection = chosen_collection
+
+    def on_retrieval(stats: Dict) -> None:
+        m.retrieval_candidates = stats.get("retrieval_candidates", 0)
+        m.retrieval_after_mmr = stats.get("retrieval_after_mmr", 0)
+        m.retrieval_after_rerank = stats.get("retrieval_after_rerank", 0)
+        m.retrieval_after_expand = stats.get("retrieval_after_expand", 0)
+        m.retrieval_ms = stats.get("retrieval_ms", 0)
+        m.embedding_calls = stats.get("embedding_calls", 0)
+        m.cross_encoder_calls = stats.get("cross_encoder_calls", 0)
 
     results = semantic_query(
         query_text=query,
@@ -458,6 +501,7 @@ def answer_query(
         mmr=True,
         rerank=use_rerank,
         expand_neighbors=expand_neighbors,
+        metrics_callback=on_retrieval,
     )
 
     # Strictly keep docs from the identified lender only
@@ -465,10 +509,17 @@ def answer_query(
     results = _filter_results_by_lender(results, expected_slug)
     # Drop docs that mention other lenders at the content level
     results = _filter_cross_lender_mentions(results, expected_slug, chroma_path)
+    m.retrieval_after_filter = len(results.get("ids", [[]])[0]) if results else 0
+    notify("on_retrieval_end", m)
     # If nothing survives filtering, fail fast with a grounded message
     if not results.get("ids") or not results["ids"][0]:
-        return {"json": {"used_sources": 0, "coherence": 0.0},
-                "answer_text": f"No lender-specific results found for '{expected_slug}'. Please verify the lender name or try a different query."}
+        m.error = "no_results_after_filter"
+        notify("on_pipeline_end", m)
+        return {
+            "json": {"used_sources": 0, "coherence": 0.0},
+            "answer_text": f"No lender-specific results found for '{expected_slug}'. Please verify the lender name or try a different query.",
+            "metrics": m,
+        }
 
     # 2) Compact sources for prompt
     sources_block = _format_sources(results, max_chars_per_doc=max_chars_per_doc)
@@ -482,8 +533,15 @@ def answer_query(
   "used_sources": 0
 }"""
     messages = _build_messages(query, sources_block, json_schema_hint, background=background)
+    prompt_text = " ".join(str(m.get("content", "")) for m in messages)
+    m.prompt_tokens_approx = _approx_tokens(prompt_text)
+    notify("on_llm_start", m)
+
     try:
+        t0 = time.perf_counter()
         raw = ask_ollama(messages, num_ctx=num_ctx, num_predict=num_predict)
+        m.llm_ms = (time.perf_counter() - t0) * 1000
+        m.completion_tokens_approx = _approx_tokens(raw)
     except requests.HTTPError as e:
         # Retry on server error with trimmed prompt/context
         status = getattr(e.response, "status_code", None)
@@ -519,11 +577,17 @@ def answer_query(
                         background = None
 
                 messages = _build_messages(query, sources_block, json_schema_hint, background=background)
+                m.llm_retries += 1
+                t0 = time.perf_counter()
                 raw = ask_ollama(messages, num_ctx=trimmed_ctx, num_predict=num_predict)
+                m.llm_ms += (time.perf_counter() - t0) * 1000
+                m.completion_tokens_approx = _approx_tokens(raw)
             except Exception:
                 raise
         else:
             raise
+
+    notify("on_llm_end", m)
 
     # 4) Parse JSON robustly (fallback: extract first JSON block)
     try:
@@ -556,14 +620,26 @@ def answer_query(
     obj["coherence_supported"] = hit
     obj["coherence_total"] = total
 
-    return {"json": obj, "answer_text": answer_text}
+    m.coherence_score = coh
+    m.coherence_supported = hit
+    m.coherence_total = total
+    m.sources_used = used_sources
+    m.answer_length = len(answer_text)
+    notify("on_pipeline_end", m)
+
+    return {"json": obj, "answer_text": answer_text, "metrics": m}
 
 if __name__ == "__main__":
     import argparse
+    from pathlib import Path
+
+    _ROOT = Path(__file__).resolve().parent.parent
+    _DEFAULT_CHROMA = str(_ROOT / "chroma_db")
+
     p = argparse.ArgumentParser(description="RAG -> Ollama structured answer")
     p.add_argument("query")
     p.add_argument("--collection", default=None)
-    p.add_argument("--chroma", default=r"C:\\Users\\ottog\\desktop\\Chromaa")
+    p.add_argument("--chroma", default=_DEFAULT_CHROMA, help="Chroma DB path")
     p.add_argument("--n", type=int, default=6)
     p.add_argument("--expand", type=int, default=1)
     p.add_argument("--rerank", action="store_true", default=False)
@@ -573,7 +649,39 @@ if __name__ == "__main__":
     p.add_argument("--with-collection", action="store_true", default=True, help="Include lender-wide background context")
     p.add_argument("--coll-maxdocs", type=int, default=150, help="Max docs sampled from collection for background")
     p.add_argument("--coll-chars", type=int, default=6000, help="Max total chars of background context")
+    p.add_argument("--metrics", action="store_true", help="Enable logging + JSONL metrics output")
+    p.add_argument("--log-dir", type=Path, default=_ROOT / "logs", help="Log directory")
+    p.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
+    p.add_argument("--tier", choices=["minimal", "balanced", "full"], default="balanced",
+                    help="Cost/performance tier: minimal (fast), balanced, full (best quality)")
     args = p.parse_args()
+
+    if args.tier == "minimal":
+        args.n = 3
+        args.expand = 0
+        args.rerank = False
+        args.doc_chars = 1200
+        args.num_ctx = 8192
+        args.num_predict = 256
+    elif args.tier == "full":
+        args.n = 8
+        args.expand = 2
+        args.rerank = True
+        args.doc_chars = 2500
+        args.num_ctx = 16384
+        args.num_predict = 768
+
+    if args.metrics:
+        clear_strategies()
+        setup_logging(
+            level=getattr(logging, args.log_level),
+            log_dir=args.log_dir,
+            log_file="rag_pipeline.log",
+            console=True,
+        )
+        register_strategy(LoggingStrategy())
+        register_strategy(JsonFileStrategy(args.log_dir / "rag_metrics.jsonl"))
+        register_strategy(CostAwareStrategy())
 
     out = answer_query(
         args.query,
@@ -589,7 +697,7 @@ if __name__ == "__main__":
         num_ctx=args.num_ctx,
         num_predict=args.num_predict,
     )
-    # Print only count and answer
+    # Print count and answer
     used = out.get("json", {}).get("used_sources")
     try:
         used_int = int(used) if used is not None else 0
@@ -601,6 +709,9 @@ if __name__ == "__main__":
     ct = out.get("json", {}).get("coherence_total")
     if isinstance(coh, float) and isinstance(cs, int) and isinstance(ct, int) and ct > 0:
         print(f"Coherence: {coh:.2f} ({cs}/{ct})")
+    if args.metrics and "metrics" in out:
+        m = out["metrics"]
+        print(f"Run: {m.run_id} | retrieval_ms={m.retrieval_ms:.0f} llm_ms={m.llm_ms:.0f} tokens~{m.prompt_tokens_approx}+{m.completion_tokens_approx}")
     print()
     ans_text = (out.get("answer_text", "") or "").strip()
     ans_text = _polish_answer(ans_text)

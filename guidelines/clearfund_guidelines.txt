@@ -1,0 +1,27 @@
+# LENDER: clearfund
+
+## funding_guidelines
+*   Advance Range: $50,000 to $1,500,000
+*   Payment Terms: 100-180 Days
+*   Factor Range: 1.32-1.38 BR
+*   Bank Fee: 3%-5%
+*   Positions: 1st - 5th
+
+## eligibility_criteria
+*   Minimum Monthly Revenue: $100,000
+*   Minimum Time In Business (TIB): 2 years
+*   Minimum Monthly Deposits: 4
+*   Negative Days: Less than 2 monthly
+*   Minimum FICO Score: 600
+
+## deal_structure
+*   The product structure appears to be a Merchant Cash Advance (MCA) based on the use of "Factor Range" and "Positions" terminology.
+*   Payment terms are fixed between 100 and 180 days.
+*   The lender is willing to fund in positions from 1st up to 5th.
+
+## key_findings
+*   Clearfund provides MCA advances ranging from $50,000 to $1,500,000.
+*   Factor rates are competitive, between 1.32 and 1.38, with flexible payment terms from 100-180 days.
+*   Bank fees are 3%-5%, and the lender can fund positions up to 5th.
+*   Key eligibility requirements include $100,000 minimum monthly revenue, 2 years TIB, at least 4 monthly deposits, less than 2 negative days per month, and a minimum 600 FICO score.
+*   Required documentation for funding includes 3 months bank statements, application, driver's license, voided check, executed contract, AR/POO/CC statements, bank verification, and a 5-minute funding call.

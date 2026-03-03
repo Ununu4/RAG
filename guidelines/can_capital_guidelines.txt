@@ -1,0 +1,35 @@
+# LENDER: can_capital
+
+## funding_guidelines
+- **Funding Size:** Up to $200,000 (single location).
+- **Term Range:** 6-18 months.
+- **Origination Fee:** 2.99%. Brokers are prohibited from charging additional fees.
+- **Payment Frequency:** Daily & Weekly on all offers.
+- **Payoff Rules:** Maximum of 1 active competitor balance allowed; net 50% rule applies.
+- **Renewal Eligibility:** 50% of the original funding must be repaid.
+- **Concurrent Contracts:** Allowed up to a maximum of $50,000, if within 90 days from original funding and with a clean pay history.
+- **Stacking:** Not permitted (do not stack additional funding on top of CAN Capital funding).
+
+## eligibility_criteria
+- **FICO:** 600+.
+- **Time In Business:** 3+ Years.
+- **Minimum Monthly Revenue Deposits:** 3.
+- **Bankruptcy:** Must be older than 24 months.
+- **Bank Statements:** 3 months required for deals <=$150,000; 12 months required for deals >$150,000.
+- **Open Tax Liens/Judgements:** Maximum allowed is <=$175,000.
+- **Credit Check:** Experian - Soft Pull.
+- **Preferred Industries (Not All Inclusive):** Medical (Doctors/Dentists), Retail, Veterinary, Auto Repair, Education Services, Manufacturing, Business Services, Food Stores / Liquor Stores, Eating & Drinking Establishments, Engineering.
+- **Prohibited Industries (Not All Inclusive):** Cannabis/CBD, Real Estate, Transportation/Trucking, Non-Profit Organizations, Auto Dealerships, Adult Entertainment/Gambling, Financial Services, Legal Services.
+
+## deal_structure
+- **Positions:** 1st Only.
+- **UCC Filing:** $150,000+.
+
+## key_findings
+- Brokers are expressly forbidden from charging fees in addition to CAN Capital's 2.99% origination fee.
+- Funding is exclusively offered in a 1st position.
+- Stacking additional funding on top of an existing CAN Capital deal is not allowed.
+- Credit checks are performed as an Experian soft pull.
+- Specific lists for both preferred and prohibited industries are provided.
+- Bank statement requirements vary based on the funding size: 3 months for <=$150k, 12 months for >$150k.
+- Concurrent contracts are permitted under specific conditions: max $50k, within 90 days of original funding, and with a clean pay history.

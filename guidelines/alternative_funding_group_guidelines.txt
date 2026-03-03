@@ -1,0 +1,77 @@
+# LENDER: alternative_funding_group
+
+## funding_guidelines
+- **Standard Program:**
+    - Funding Amount: Up to $1 Million
+    - Term: 3-12 months
+    - Commission: Up to 14 points
+    - Position: 1st - 4th
+    - Payment Frequency: Daily and Weekly
+    - Same Day Funding: Available
+    - Pre-Payment Discounts: Available
+- **Reverse Consolidation:**
+    - Max Program Term: Up to 200 days
+    - Commission: Up to 14 points
+    - Fixed Buy Rate: 1.32
+    - Fixed Sell Rate: 1.46
+    - Payment Reduction: Typically lowers payments by 40-60%.
+    - Additional Advance: Often nets clients an additional advance.
+- **Premium Pricing Program:**
+    - Max Program Term: Up to 100 days
+    - Commission: Up to 10 points
+    - Fixed Buy Rate: 1.21
+    - Fixed Sell Rate: 1.30 (includes 6% fees)
+
+## eligibility_criteria
+- **General (Standard Program):**
+    - Time in Business (TIB): Minimum 1 year
+    - FICO Score: Minimum 550 (Experian)
+    - Monthly Average Revenue: Minimum $30k
+    - Average Daily Balance: Minimum $1K+
+    - Business Checking Account: Required
+    - Ownership: 51% ownership on contract signage
+- **General (Reverse Consolidation & Premium Pricing):**
+    - Bank Statements: 3 months plus
+    - MTD Max Negative Days: 4 days per month
+- **Specific Program Requirements:**
+    - Reverse Consolidation: Minimum TIB 24 months
+    - Premium Pricing Program: Minimum TIB 12 months
+- **Industry Specific:**
+    - **Preferred Industries:** Retail, Restaurant, Medical, Cannabis, Manufacturing, Attorneys/Law Offices, Auto Sales.
+    - **Specific Preferred Industries with notes:** Financial Consultants (Stock/Crypto brokers/traders are restricted), Real Estate (Fix and Flip, Buying/Selling, Management/Construction accepted).
+    - **Industry Limitations (Standard Program):**
+        - Construction: Minimum Revenue $75k / Minimum TIB 3 years
+        - Trucking: Minimum Revenue $75k / Minimum TIB 3 years
+    - **Restricted for Reverse Consolidation Program:** Construction and Logistics.
+    - **Restricted Industries (Overall):** Stock/Crypto brokers or Traders, Cash Checking, Bail Bonds.
+- **Geographical Restrictions:**
+    - Restricted States: California & New York.
+
+## deal_structure
+- **Loan Type:** Merchant Cash Advance (MCA)
+- **Credit Check:** Soft Credit Pull Only
+- **Contracting:** E-Signed Contract (or Hard Copy at Client Request)
+- **Payment Processing:**
+    - Weekly fundings: Debited on Friday following closing date.
+    - Daily fundings: Debit initiated on the next business day.
+- **Underwriting Process:**
+    1. Application and risk evaluation.
+    2. Offer generation and delivery to ISO.
+    3. Contract signing and final steps review.
+    4. Stipulation review, merchant interview, bank login.
+    5. Final review and funding call.
+    6. Commissions paid to partners the following Friday.
+- **Renewals/Add-ons:** Merchants eligible at 50% paid down. Partners receive commission on the full renewal amount.
+- **Syndication:** Allowed on deals.
+- **Required Documents (Submission):** Last 3 months of Bank statements, Signed application.
+- **Required Documents (Contract Request):** Merchant Best Contact Number and Email, License or Government Issued ID, Voided Check.
+- **Bank Verification:** Manual Log in for Bank Verification required.
+- **Contact for Submissions:** uw@altfunding.com (cc ISO Manager)
+- **Contact for Contract Requests:** contracts@altfunding.com (cc ISO Manager)
+
+## key_findings
+- **Diverse Programs:** Offers Standard MCA (3-12 months, up to $1M), Reverse Consolidation (up to 200 days), and Premium Pricing (up to 100 days) to suit various merchant needs.
+- **Accessible Eligibility:** Minimum FICO 550, 1 year TIB, and $30k monthly revenue provide broad accessibility for standard programs.
+- **Industry Nuances:** Construction and Trucking require higher TIB/revenue for standard programs and are restricted from Reverse Consolidations. Certain industries (e.g., Stock/Crypto brokers, Cash Checking, Bail Bonds) and states (CA, NY) are restricted.
+- **Strong Broker Support:** Features include soft credit pull, syndication allowance, weekly commission payouts, and a transparent underwriting process with dedicated support.
+- **Expedited Funding:** Same Day Funding is available for quick access to capital.

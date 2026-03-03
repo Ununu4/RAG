@@ -1,0 +1,44 @@
+# LENDER: advantage_capital_funding
+
+## funding_guidelines
+- **Minimum Advance Amount:** $10,000
+- **Maximum Advance Amount:** $2,000,000
+- **Term Range (Standard):** 4-10 Months (80-160 days)
+- **Term Range (Higher Tier):** Up to 10 months / 40 weeks
+- **Factor Rate (Standard):** 1.49
+- **Pricing (Higher Tier):** 1.29 – 1.39
+- **Maximum Holdback (Standard):** 25%
+- **Holdback (Higher Tier):** 10-14%
+- **Payments:** Daily and Weekly
+- **Commission:** 12% on factor rate of 1.49
+
+## eligibility_criteria
+- **Minimum Time In Business (TIB):** 1 year (standard), 3 years (Higher Tier)
+- **Minimum Average Gross Sales (AGS):** $350,000
+- **Minimum FICO:** 550 (standard), 650+ (Higher Tier)
+- **Ownership Required:** 51%
+- **Bankruptcy Discharge:** At least 1 year prior
+- **Minimum Open Tradelines:** 3
+- **Positions:** 1st through 4th (standard), 1st to 2nd position only (Higher Tier)
+- **Geographic Coverage:** Accepting Submissions in all 50 states
+
+**Exclusions (Prohibited Industries & Auto-Declines):**
+- Adult Entertainment, Attorneys/Law Firms, Auto Dealerships, Class 3 Weapon Dealers, Collection Agencies, Credit Repair Companies, Entertainment & Event Ticket Sales, Kiosks, Financial Products Companies, Gas Stations, Telemarketers, Non-for-Profit Companies, Mortgage Lenders, Trucking / Hauling, Multi-Level Marketing, Diamond / Jewelry Sales, Pawn Shops, Publicly Traded Companies, Real Estate brokers, Detective Services, Title Loans, Travel Agencies, Online Home Based, Bail Bond Companies, Auto Content Websites, Auction Companies.
+- **Additional Auto-Declines:** Non-Profit Organizations, Multiple Bankruptcies, Trucking Industry, Prior MCA Defaults.
+
+## deal_structure
+- The structure is based on Merchant Cash Advances (MCA) as indicated by "Factor rate," "holdback," and "Daily and Weekly payments."
+- **Standard Approvals:** 80-160-day Terms, Factor rate of 1.49, Maximum 25% holdback.
+- **Higher Tier Approvals:** Max funding at 10 month/40-week term, Pricing 1.29 – 1.39, 10-14% holdback.
+- **Positions:** 1st to 4th for standard deals, 1st to 2nd only for higher tier deals.
+- **Commissions:** 12% paid on a factor rate of 1.49.
+
+## key_findings
+- **Two Tiers of Funding:** Standard deals (550 FICO, 1-year TIB, 1.49 factor, up to 4th position) and Higher Tier deals (650+ FICO, 3-year TIB, 1.29-1.39 pricing, 1st-2nd position only).
+- **Comprehensive Prohibited Industries List:** A wide range of specific industries are explicitly excluded, including non-profits, trucking, and those with prior MCA defaults or multiple bankruptcies.
+- **Documentation Requirements:**
+    - **Submission:** Signed application (51% ownership, last 30 days), 3 months complete bank statements (4 months for certain states).
+    - **Funding:** Valid Driver's License, Business Voided Check, Site Inspection (Virtual for standard, physical for Higher Tier), Proof of Ownership, Bank Verification, Funding Call.
+    - **Additional for $100,000+:** Tax Returns, Business Financials (P&L/Balance Sheet).
+    - **Higher Tier Stips:** Most Recent Tax Return, Financials (P&L/Balance Sheet), AR/AP Aging, Manual Bank Login, Site Inspection.
+- **Minimums:** $10k advance, $350k AGS, 550 FICO, 1 year TIB.

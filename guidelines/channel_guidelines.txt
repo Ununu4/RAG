@@ -1,0 +1,48 @@
+# LENDER: channel
+
+## funding_guidelines
+*   **Maximum Funding:** $250,000
+*   **Maximum Term:** 18 months
+*   **Competitor Payoff:** Up to 2 competitors, with a maximum payoff of $75,000. Must net 50% of competitor balances.
+*   **Commissions:** 12 point commissions for Elite, Plus, and Premium tiers (can be marked up 12 points). Platinum pricing tier is capped at 6 points. Paid within 24 hours.
+*   **Early Satisfaction Program:** 100% Interest Forgiveness (referred to as EARLY SATISFACTION) available for business advances.
+
+## eligibility_criteria
+*   **Time in Business:** Minimum 3 years.
+*   **FICO:** Minimum 650.
+*   **Bank Balance Minimum Thresholds (Avg Daily Balance - ADB):**
+    *   $300K - $750K revenue: > $10,000 minimum ADB
+    *   $750K - $1.5MM revenue: > $20,000 minimum ADB
+    *   $1.5MM+ revenue: > $25,000 minimum ADB
+*   **Average Monthly Deposit Requirement:** 5.
+*   **Negative Balance Days:** Limit 6 in past 3 months.
+*   **NSFs Days:** Limit 10 in past 3 months.
+*   **Tax Liens:** No tax liens over $100K. For $50K+ tax lien balance, proof of payment plan is required.
+*   **Coexistence:** Can coexist with one Line of Credit (LOC) (terms and balance needed for review). Cannot take a 3rd position.
+*   **Approved Industries:** Building Supply, Cleaning, Construction (Residential/Commercial, Civil, Comm), C-Stores, Doctors/Dentists, Gas, Grocery, Hardware, Landscaping, Liquor, Local, Couriers, Specialty Trades, Warehouse, Auto & Repair, Breweries w/ dist., Care Providers, Franchise Restaurants / Quick Service, Laundry Services, Manufacturing (durable & nondurable), Medical - Other, Professional, Services Retail, Technology, Wholesale (durable & nondurable), Air Travel, Apparel / Furniture, Entertainment, Fitness / Sport, Hospitality, Hotels, Non-franchise Restaurants, Passenger Transportation, Specialty, Restaurants, Travel / Tourism, Salons / Spas, Bars / Taprooms, Dry Cleaners.
+*   **Restricted Industries:** Adult Entertainment, Agriculture (seasonal/commodity farming), All Other Animal Production, Automotive Dealerships, Bail Bonds, Cannabis Growers/Sellers (including cannabis only service providers), Class 3 Weapons Dealers, Credit Services (asset management, collection services, credit repair companies), Day Trading Enterprises, Financial Services (broker/dealers, depository institutions, non-depository credit institutions), Forestry, Gambling Establishments (brick and mortar, on-line), Government/Municipal Agency, Insurance, Legal Services, Mining, Mobile Home Dealer, Multi-Level Marketing, Non-Profits, Oil-Drilling/Fracking, Owner/Operator Trucking Business (single unit), Political Organizations, Precious Metals, Publicly Traded Companies, Religious Organizations, Tax Preparation, Transportation.
+
+## deal_structure
+*   **Products Offered:** Business Loan and Business Advance.
+*   **Business Loan:**
+    *   Customer is a Borrower, CPC is a Lender.
+    *   Involves Payments, Terms, Amortization Schedules. Pays Back or Paid-Off.
+    *   Based on Pull % of monthly deposits, Loan Amount (Approval).
+    *   Includes a Guarantee of re-payment.
+    *   Most states will default to a loan. VA is a required Loan state.
+*   **Business Advance:**
+    *   Customer is a Seller, CPC is a Buyer.
+    *   Involves Remittance, Underwritten Completion Period, NO Amortization Schedules.
+    *   Satisfies an Agreement, based on Specified % of anticipated revenues, Purchased Price (Approval).
+    *   No Unconditional Guarantee to repay.
+    *   **Required Business Advance States:** AK, CO, CT, GA, MI, MT, ND, NJ, NV, NY, OK, RI, SD, VT, and all sole props.
+*   **Turnaround Time:** 3-4 hours.
+
+## key_findings
+*   Maximum funding of $250,000 over an 18-month term.
+*   Strict financial eligibility: Minimum 650 FICO, 3 years in business, and specific bank balance thresholds tied to revenue.
+*   Lender offers both Business Loans and Business Advances, with clear distinctions and specific states where advances are mandatory.
+*   High broker commissions (12 points for most tiers, 6 for Platinum) with quick payment (within 24 hours).
+*   Fast turnaround time for approvals (3-4 hours).
+*   A 100% Interest Forgiveness program (Early Satisfaction) is available for business advances.
+*   Comprehensive lists of approved and restricted industries are provided.

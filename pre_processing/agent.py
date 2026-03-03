@@ -8,19 +8,63 @@ from chonkie import FileFetcher, TextChef, SentenceChunker, EmbeddingsRefinery
 from chromadb import PersistentClient
 from chromadb.utils import embedding_functions
 
-DEFAULT_DIR = r"C:\Users\ottog\desktop\extracted_pdfs"
-DEFAULT_CHROMA = r"C:\Users\ottog\desktop\Chromaa"
+# Default to guidelines/ relative to project root (parent of pre_processing/)
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_DIR = str(_PROJECT_ROOT / "guidelines")
+DEFAULT_CHROMA = str(_PROJECT_ROOT / "chroma_db")
 # Use a QA-tuned model for better retrieval semantics
 EMBED_MODEL = "sentence-transformers/multi-qa-MiniLM-L6-cos-v1"
 
+# Chunking strategy (tokens; ~4 chars/token heuristic for char-based thresholds)
+CHUNK_SIZE = 320
+CHUNK_OVERLAP = 64
+SMALL_SECTION_CHARS = 600   # ~150 tokens - keep whole
+INDUSTRY_LIST_CHARS = 1600  # ~400 tokens - split long comma lists
+INDUSTRY_BATCH_SIZE = 20
+
 # ---------- Extraction ----------
+# Canonical section order for guidelines schema
+CANONICAL_SECTIONS = ("funding_guidelines", "eligibility_criteria", "deal_structure", "key_findings")
+
+
+def _normalize_lender_slug(s: str, file_stem: str) -> str:
+    """Derive clean lender slug; strip _guidelines suffix when from filename."""
+    base = (s or file_stem).strip()
+    base = re.sub(r"_guidelines$", "", base, flags=re.I)
+    return base
+
+
 def parse_lender_file(text: str, file_path: Path) -> tuple[dict, str]:
-    """Extract metadata and content body from lender txt file."""
+    """Extract metadata and content body from lender txt file.
+    Supports:
+    - Guidelines format: # LENDER: <slug> followed by ## section blocks
+    - Legacy format: ### LENDER_ID/NAME/SOURCE_FILE, dashed line, then body
+    """
     lender_id = None
     lender_name = None
     source_file = None
+    body_text = text.strip()
 
-    for line in text.splitlines():
+    lines = text.splitlines()
+    first_line = (lines[0] or "").strip()
+
+    # Guidelines format: # LENDER: <slug>
+    lender_match = re.match(r"^#\s*LENDER:\s*(.+)$", first_line, re.I)
+    if lender_match:
+        slug = lender_match.group(1).strip()
+        lender_id = lender_name = _normalize_lender_slug(slug, file_path.stem)
+        source_file = file_path.name
+        # Body: everything after first line (skip # LENDER header)
+        body_text = "\n".join(lines[1:]).strip()
+        metadata = {
+            "lender_id": lender_id,
+            "lender_name": lender_name,
+            "source_file": source_file,
+        }
+        return metadata, body_text
+
+    # Legacy format: ### LENDER_ID:, ### LENDER_NAME:, ### SOURCE_FILE:, -----
+    for line in lines:
         line = line.strip()
         if line.startswith("### LENDER_ID:"):
             lender_id = re.sub(r"^### LENDER_ID:\s*", "", line)
@@ -31,21 +75,75 @@ def parse_lender_file(text: str, file_path: Path) -> tuple[dict, str]:
         elif line.startswith("-----"):
             break
 
-    # everything after the dashed line is body content
     body_match = re.split(r"-{10,}", text, maxsplit=1)
     body_text = body_match[1].strip() if len(body_match) > 1 else text.strip()
 
+    stem = _normalize_lender_slug(None, file_path.stem)
     metadata = {
-        "lender_id": lender_id or file_path.stem,
-        "lender_name": lender_name or file_path.stem,
-        "source_file": source_file or file_path.name
+        "lender_id": lender_id or stem,
+        "lender_name": lender_name or stem,
+        "source_file": source_file or file_path.name,
     }
     return metadata, body_text
 
 
+# ---------- Chunking Helpers ----------
+_SUBHEADING_RE = re.compile(r"^\s*[-*]\s+\*\*([^*]+)\*\*:\s*", re.MULTILINE)
+
+
+def _split_by_subheadings(text: str) -> List[Tuple[str, str]]:
+    """Split section content by **SubHeading:** groups. Returns (subheading, content) tuples."""
+    groups: List[Tuple[str, str]] = []
+    current_heading = ""
+    current_lines: List[str] = []
+
+    for line in text.splitlines():
+        m = _SUBHEADING_RE.match(line)
+        if m:
+            if current_lines:
+                groups.append((current_heading, "\n".join(current_lines).strip()))
+            current_heading = m.group(1).strip()
+            rest = line[m.end() :].strip()
+            current_lines = [rest] if rest else []
+        else:
+            current_lines.append(line)
+
+    if current_lines:
+        groups.append((current_heading, "\n".join(current_lines).strip()))
+    return groups if groups else [("", text.strip())]
+
+
+def _maybe_split_industry_list(content: str, category_prefix: str) -> List[str]:
+    """If content is a long comma-separated list, split into batches for retrieval."""
+    if len(content) <= INDUSTRY_LIST_CHARS:
+        return [content]
+    parts = [p.strip() for p in re.split(r",|;", content) if p.strip()]
+    if len(parts) < 10:
+        return [content]
+    batches: List[str] = []
+    for i in range(0, len(parts), INDUSTRY_BATCH_SIZE):
+        batch = parts[i : i + INDUSTRY_BATCH_SIZE]
+        batch_text = ", ".join(batch)
+        if category_prefix:
+            batch_text = f"{category_prefix} (items {i + 1}-{i + len(batch)}): {batch_text}"
+        batches.append(batch_text)
+    return batches
+
+
+class _SimpleChunk:
+    """Minimal chunk object for refinery (needs .text, .metadata; gets .embedding)."""
+
+    def __init__(self, text: str, metadata: Dict):
+        self.text = text
+        self.metadata = metadata
+
+
 # ---------- Utility ----------
 def slugify(name: str) -> str:
-    return re.sub(r"[^\w\-]+", "-", name.lower()).strip("-")[:64]
+    """Normalize to hyphenated slug for collection names (e.g. alternative-funding-group)."""
+    s = name.lower().replace("_", "-")
+    s = re.sub(r"[^\w\-]+", "-", s).strip("-")
+    return s[:64]
 
 
 # ---------- Main Process ----------
@@ -56,8 +154,8 @@ def process_directory(txt_dir: str, chroma_path: str):
     chef = TextChef()
     docs = chef.process_batch([str(p) for p in files])
 
-    # Smaller, sentence-aware chunks for better semantic precision
-    chunker = SentenceChunker(chunk_size=180, chunk_overlap=40)
+    # Hierarchical chunking: subheading-aware, optimized for guidelines structure
+    chunker = SentenceChunker(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
     refinery = EmbeddingsRefinery(embedding_model=EMBED_MODEL)
     client = PersistentClient(path=chroma_path)
     embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=EMBED_MODEL)
@@ -66,6 +164,9 @@ def process_directory(txt_dir: str, chroma_path: str):
         l = line.strip()
         if not l:
             return False
+        # Guidelines schema: ## funding_guidelines, ## eligibility_criteria, etc.
+        if re.match(r"^##\s+\S+", l):
+            return True
         # Bold-style headings like **Eligibility:** or plain 'Eligibility:'
         if re.match(r"^\*\*?.+\*\*?:\s*$", l):
             return True
@@ -91,7 +192,9 @@ def process_directory(txt_dir: str, chroma_path: str):
                 if current_lines:
                     sections.append((current_title, "\n".join(current_lines).strip()))
                     current_lines = []
-                title = re.sub(r"^\*\*|\*\*$", "", line).strip()
+                # Strip ## markdown, **bold**, trailing colon
+                title = re.sub(r"^##\s*", "", line)
+                title = re.sub(r"^\*\*|\*\*$", "", title).strip()
                 title = title.rstrip(":")
                 current_title = title or current_title
             else:
@@ -148,8 +251,9 @@ def process_directory(txt_dir: str, chroma_path: str):
 
     for doc, file_path in zip(docs, files):
         metadata, body_text = parse_lender_file(doc.content, file_path)
-        lender_name = slugify(metadata["lender_name"])
-        collection_name = f"lender-{lender_name}"
+        lender_slug = slugify(metadata["lender_name"])
+        metadata["lender_name"] = lender_slug  # hyphenated slug for retrieval filtering
+        collection_name = f"lender-{lender_slug}"
 
         sections = split_sections(body_text)
         augmented_chunks = []
@@ -164,15 +268,43 @@ def process_directory(txt_dir: str, chroma_path: str):
         for s_idx, (title, content) in enumerate(sections):
             if not content.strip():
                 continue
-            sec_chunks = chunker.chunk_batch([content])[0]
-            # Assign metadata and prefix with section title to strengthen semantics
-            for c_idx, ch in enumerate(sec_chunks):
-                base_text = ch.text.strip()
+            subheading_groups = _split_by_subheadings(content)
+            section_chunk_list: List[object] = []
+
+            for subheading, sub_content in subheading_groups:
+                if not sub_content.strip():
+                    continue
+                section_prefix = f"{title}: " if title and title.lower() != "intro" else ""
+                sub_prefix = f"{subheading}: " if subheading else ""
+                full_prefix = (section_prefix + sub_prefix).strip()
+
+                # Small section: keep whole
+                if len(sub_content) < SMALL_SECTION_CHARS:
+                    text_with_prefix = (full_prefix + " " + sub_content).strip() if full_prefix else sub_content
+                    section_chunk_list.append(_SimpleChunk(text_with_prefix, {}))
+                    continue
+
+                # Long comma-separated list (e.g. industry lists): batch split
+                industry_parts = _maybe_split_industry_list(sub_content, full_prefix if full_prefix else "")
+                if len(industry_parts) > 1:
+                    for part in industry_parts:
+                        section_chunk_list.append(_SimpleChunk(part, {}))
+                    continue
+
+                # Default: sentence-aware chunking
+                raw_chunks = chunker.chunk_batch([sub_content])[0]
+                for ch in raw_chunks:
+                    ch.text = (full_prefix + " " + ch.text).strip() if full_prefix else ch.text.strip()
+                    section_chunk_list.append(ch)
+
+            # Assign metadata, deduplicate, and build augmented_chunks
+            for c_idx, ch in enumerate(section_chunk_list):
+                base_text = ch.text.strip() if hasattr(ch, "text") else ""
                 # Skip trivial bullets or numbering-only lines
                 if re.fullmatch(r"\d+[.)]?", base_text) or base_text in {"-", "•"}:
                     continue
-                prefix = f"{title}: " if title and title.lower() != "intro" else ""
-                text_with_prefix = (prefix + base_text).strip()
+                # All chunks have section/subheading prefix applied at creation
+                text_with_prefix = ch.text.strip()
 
                 # Deduplicate near-duplicates by hash of normalized text
                 norm = re.sub(r"\s+", " ", text_with_prefix.lower()).strip()
@@ -181,12 +313,19 @@ def process_directory(txt_dir: str, chroma_path: str):
                     continue
                 seen_hashes.add(h)
 
-                sec_meta = {**metadata,
-                            "section": title or "",
-                            "section_index": s_idx,
-                            "chunk_index": c_idx,
-                            # Store tags as a comma-separated string to satisfy Chroma metadata type constraints
-                            "tags": ",".join(detect_tags(title + "\n" + base_text))}
+                # Canonical section index for guidelines schema ordering
+                try:
+                    canonical_idx = CANONICAL_SECTIONS.index(title)
+                except ValueError:
+                    canonical_idx = s_idx
+                sec_meta = {
+                    **metadata,
+                    "section": title or "",
+                    "section_index": s_idx,
+                    "canonical_section_index": canonical_idx,
+                    "chunk_index": c_idx,
+                    "tags": ",".join(detect_tags(title + "\n" + base_text)),
+                }
                 sec_meta.update(extract_numeric_hints(base_text))
 
                 setattr(ch, "metadata", sec_meta)
@@ -232,9 +371,9 @@ def process_directory(txt_dir: str, chroma_path: str):
             embeddings=embeddings,
             metadatas=metadatas,
         )
-        print(f"✅ {len(ids)} chunks → {collection_name}")
+        print(f"[OK] {len(ids)} chunks -> {collection_name}")
 
-    print("\n✅ All lenders processed successfully.")
+    print("\n[OK] All lenders processed successfully.")
 
 
 if __name__ == "__main__":

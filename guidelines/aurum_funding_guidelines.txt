@@ -1,0 +1,13 @@
+# LENDER: aurum_funding
+
+## funding_guidelines
+Funding amounts: $10,000 to $1,000,000. Term lengths: 40 days to 180 days. Average fee range: 7%-10%. Cleaner files range: 3%-5%. Early pay discount available.
+
+## eligibility_criteria
+Minimum 1 year in business. Minimum 500+ credit score. Position: 2nd-10th. Minimum 5 deposits per month. Minimum $30,000 monthly revenue. Less than 5 negative days. Less than 5 NSF occurrences. Excluded industries: Staffing, Check Cashing/ATM, Auto Sales, Non-Profits, Real Estate. Trucking is considered with good pay history.
+
+## deal_structure
+Likely a Merchant Cash Advance (MCA) or similar alternative funding product, indicated by "position," "neg days," "NSF," and "fee range." Terms are 40-180 days. Deals are structured with a fee-based model, and an early pay discount can be offered to close deals.
+
+## key_findings
+Offers funding from $10k to $1M with terms ranging from 40 to 180 days. Accepts positions 2nd through 10th and credit scores 500+. Average response time is 3 hours, and commissions are paid same day. Fee ranges from 7-10%, with cleaner files getting 3-5%. Provides an early pay discount to win deals. Trucking is conditionally accepted, while several other industries are restricted.

@@ -1,7 +1,8 @@
 """Simplified, high-signal Chroma query utility (MMR + optional re-rank + neighbor expansion)."""
 from __future__ import annotations
 import argparse
-from typing import Dict, List, Tuple
+import time
+from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 from chromadb import PersistentClient
@@ -58,31 +59,41 @@ def semantic_query(
     mmr: bool = True,
     rerank: bool = True,
     expand_neighbors: int = 0,
+    metrics_callback: Optional[Callable[[Dict], None]] = None,
 ) -> Dict:
     """Semantic query with optional MMR, cross-encoder rerank, and neighbor expansion."""
+    t0 = time.perf_counter()
+    embed_calls = 0
+    ce_calls = 0
+
     col = _get_collection(chroma_path, collection_name)
 
     # Fetch a larger candidate pool
     candidate_k = max(n_results * 5, 20)
     base = col.query(query_texts=[query_text], n_results=candidate_k)
+    embed_calls += 1  # Chroma uses embedding fn for query
 
     ids = base["ids"][0]
     docs = base["documents"][0]
     metas = base["metadatas"][0]
+    n_after_base = len(ids)
 
     # MMR diversity on SentenceTransformer embeddings
     if mmr and ids:
         st = SentenceTransformer(EMBED_MODEL)
         q_emb = st.encode(query_text)
         d_embs = st.encode(docs)
+        embed_calls += 1 + 1  # query + docs
         pick = _mmr(q_emb, list(d_embs), k=min(len(ids), max(n_results * 2, 10)))
         ids, docs, metas = [ids[i] for i in pick], [docs[i] for i in pick], [metas[i] for i in pick]
+    n_after_mmr = len(ids)
 
     # Cross-encoder rerank for precision
     if rerank and ids:
         try:
             ce = CrossEncoder(RERANK_MODEL)
             scores = ce.predict([[query_text, d] for d in docs])
+            ce_calls += len(docs)
             order = list(np.argsort(scores)[::-1])[:n_results]
             ids, docs, metas = [ids[i] for i in order], [docs[i] for i in order], [metas[i] for i in order]
         except Exception as e:
@@ -90,6 +101,7 @@ def semantic_query(
             ids, docs, metas = ids[:n_results], docs[:n_results], metas[:n_results]
     else:
         ids, docs, metas = ids[:n_results], docs[:n_results], metas[:n_results]
+    n_after_rerank = len(ids)
 
     # Optional neighbor expansion using prev_id/next_id hints stored at ingest
     if expand_neighbors > 0 and ids:
@@ -130,6 +142,20 @@ def semantic_query(
             ids.extend(_flatten_field(got.get("ids", [])))
             docs.extend(_flatten_field(got.get("documents", [])))
             metas.extend(_flatten_field(got.get("metadatas", [])))
+
+    n_after_expand = len(ids)
+    retrieval_ms = (time.perf_counter() - t0) * 1000
+
+    if metrics_callback:
+        metrics_callback({
+            "retrieval_candidates": n_after_base,
+            "retrieval_after_mmr": n_after_mmr,
+            "retrieval_after_rerank": n_after_rerank,
+            "retrieval_after_expand": n_after_expand,
+            "retrieval_ms": retrieval_ms,
+            "embedding_calls": embed_calls,
+            "cross_encoder_calls": ce_calls,
+        })
 
     return {"ids": [ids], "documents": [docs], "metadatas": [metas], "distances": [[0.0] * len(ids)]}
 
