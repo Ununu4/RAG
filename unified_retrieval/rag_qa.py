@@ -16,6 +16,8 @@ from sentence_transformers import SentenceTransformer
 
 from query_improved import semantic_query
 
+from backends import get_backend
+
 from monitoring import (
     CostAwareStrategy,
     JsonFileStrategy,
@@ -29,8 +31,11 @@ from monitoring import (
     timed,
 )
 
-OLLAMA_URL = "http://localhost:11434/api/chat"
-MODEL = "nous-hermes2:latest"
+def _invoke_llm(messages: List[Dict], num_ctx: int = 12288, num_predict: int = 512) -> str:
+    """Invoke LLM via configured backend (Ollama or Bedrock)."""
+    backend = get_backend()
+    return backend.invoke(messages, num_ctx=num_ctx, num_predict=num_predict)
+
 
 def _format_sources(results: Dict, max_chars_per_doc: int = 2000) -> str:
     lines = []
@@ -392,25 +397,6 @@ def _render_answer_text(obj: Dict) -> str:
 
     return "\n".join(lines).strip()
 
-def ask_ollama(
-    messages: List[Dict],
-    temperature: float = 0.1,
-    num_ctx: int = 12288,
-    num_predict: int = 512,
-) -> str:
-    payload = {
-        "model": MODEL,
-        "messages": messages,
-        "options": {"temperature": temperature, "num_ctx": num_ctx, "num_predict": num_predict},
-        "stream": False,
-        "format": "json",
-    }
-    r = requests.post(OLLAMA_URL, json=payload, timeout=120)
-    r.raise_for_status()
-    data = r.json()
-    # Ollama chat returns {'message': {'content': '...'}}; extract text
-    return data["message"]["content"]
-
 def _slugify(text: str) -> str:
     return re.sub(r"[^\w\-]+", "-", text.lower()).strip("-")
 
@@ -539,7 +525,7 @@ def answer_query(
 
     try:
         t0 = time.perf_counter()
-        raw = ask_ollama(messages, num_ctx=num_ctx, num_predict=num_predict)
+        raw = _invoke_llm(messages, num_ctx=num_ctx, num_predict=num_predict)
         m.llm_ms = (time.perf_counter() - t0) * 1000
         m.completion_tokens_approx = _approx_tokens(raw)
     except requests.HTTPError as e:
@@ -579,7 +565,7 @@ def answer_query(
                 messages = _build_messages(query, sources_block, json_schema_hint, background=background)
                 m.llm_retries += 1
                 t0 = time.perf_counter()
-                raw = ask_ollama(messages, num_ctx=trimmed_ctx, num_predict=num_predict)
+                raw = _invoke_llm(messages, num_ctx=trimmed_ctx, num_predict=num_predict)
                 m.llm_ms += (time.perf_counter() - t0) * 1000
                 m.completion_tokens_approx = _approx_tokens(raw)
             except Exception:

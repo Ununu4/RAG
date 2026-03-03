@@ -1,0 +1,3 @@
+# Additional deps for AWS deployment (RAG_BACKEND=aws)
+# pip install -r requirements.txt -r requirements-aws.txt
+boto3>=1.34.0
