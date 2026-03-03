@@ -14,6 +14,7 @@ from query_improved import semantic_query
 
 from backends import get_backend
 
+from faithfulness import compute_faithfulness
 from monitoring import (
     CostAwareStrategy,
     JsonFileStrategy,
@@ -34,15 +35,15 @@ def _invoke_llm(messages: List[Dict], num_ctx: int = 12288, num_predict: int = 5
 
 
 def _understand_query(query: str) -> Dict:
-    """Extract industry, lender, intent for prompt context. Uses same backend (Groq/Ollama)."""
+    """Extract industry, lender, intent, and deal criteria for prompt context."""
     backend = get_backend()
     msg = [{"role": "user", "content": f"""Extract from this lender FAQ query. Return ONLY valid JSON, no other text.
-{{"industry": "industry if mentioned else null", "lender": "lender name if mentioned else null", "intent": "which_lender|eligibility|requirements|restrictions|comparison|other"}}
+{{"industry": "industry if mentioned else null", "lender": "lender name if mentioned else null", "intent": "which_lender|eligibility|requirements|restrictions|comparison|other", "revenue_monthly": "monthly revenue number if mentioned else null e.g. 80000", "positions": "number of positions if mentioned else null e.g. 2", "state": "state if mentioned else null e.g. California"}}
 
 Use "which_lender" when the user asks which/what lender could fund, who could fund, recommend a lender, or similar.
 Query: {query}"""}]
     try:
-        raw = backend.invoke(msg, num_ctx=4096, num_predict=80)
+        raw = backend.invoke(msg, num_ctx=4096, num_predict=150)
         match = re.search(r"\{[^{}]*\}", raw)
         if match:
             obj = json.loads(match.group(0))
@@ -50,10 +51,13 @@ Query: {query}"""}]
                 "industry": obj.get("industry") or None,
                 "lender": obj.get("lender") or None,
                 "intent": obj.get("intent") or "other",
+                "revenue_monthly": obj.get("revenue_monthly") or None,
+                "positions": obj.get("positions") or None,
+                "state": obj.get("state") or None,
             }
     except Exception:
         pass
-    return {"industry": None, "lender": None, "intent": "other"}
+    return {"industry": None, "lender": None, "intent": "other", "revenue_monthly": None, "positions": None, "state": None}
 
 
 def _format_sources(results: Dict, max_chars_per_doc: int = 2000) -> str:
@@ -75,14 +79,25 @@ def _build_messages(
 ) -> List[Dict]:
     system = (
         "You are a financial analyst. Answer ONLY from the Sources below. "
-        "Cite sources with [S1], [S2] etc. Be direct and factual. Output valid JSON only."
+        "Every factual claim must be supported by and cite a source [S1], [S2], etc. "
+        "Do not infer or add information not present in the sources. Be direct and factual. Output valid JSON only."
     )
     focus = ""
     if intent_context:
         industry = intent_context.get("industry")
         intent = intent_context.get("intent", "other")
         if intent == "which_lender":
-            focus = "\nContext: The user wants a LENDER RECOMMENDATION. Sources are from multiple lenders. Recommend the best match(es) based on the user's criteria (industry, revenue, positions, etc). Compare options if several fit.\n"
+            criteria_parts = []
+            if industry:
+                criteria_parts.append(f"industry: {industry}")
+            if intent_context.get("revenue_monthly"):
+                criteria_parts.append(f"revenue: ${intent_context['revenue_monthly']}/month")
+            if intent_context.get("positions"):
+                criteria_parts.append(f"positions: {intent_context['positions']}")
+            if intent_context.get("state"):
+                criteria_parts.append(f"state: {intent_context['state']}")
+            criteria_str = "; ".join(criteria_parts) if criteria_parts else "see query"
+            focus = f"\nContext: LENDER RECOMMENDATION. User criteria: {criteria_str}. Sources are from multiple lenders. Recommend ONLY lenders whose eligibility matches these criteria. State any restrictions (e.g. California, prohibited industries). If asked about documentation, list required docs per recommended lender.\n"
         elif industry:
             focus = f"\nContext: The user is asking about {industry} deals. Focus your answer on what applies to {industry} specifically.\n"
         elif intent != "other":
@@ -513,6 +528,7 @@ def answer_query(
     collection_chars: int = 6000,
     num_ctx: int = 12288,
     num_predict: int = 512,
+    compute_faithfulness: bool = True,
     metrics: Optional[PipelineMetrics] = None,
 ) -> Dict:
     m = metrics or PipelineMetrics()
@@ -522,10 +538,17 @@ def answer_query(
     # 0) Query understanding (industry, lender, intent) for prompt context + retrieval
     intent_context = _understand_query(query)
 
-    # Expand search query when industry is known (improves retrieval relevance)
+    # Expand search query with extracted criteria (improves retrieval relevance)
     search_query = query
+    extras = []
     if intent_context.get("industry"):
-        search_query = f"{query} {intent_context['industry']} industry eligibility requirements"
+        extras.append(f"{intent_context['industry']} industry eligibility")
+    if intent_context.get("state"):
+        extras.append(f"{intent_context['state']} state restrictions")
+    if intent_context.get("revenue_monthly") or intent_context.get("positions"):
+        extras.append("revenue positions requirements")
+    if extras:
+        search_query = f"{query} {' '.join(extras)}"
 
     # 1) Retrieve top evidence
     use_multi_lender = (
@@ -684,6 +707,19 @@ def answer_query(
 
     m.sources_used = used_sources
     m.answer_length = len(answer_text)
+
+    # Faithfulness: NLI entailment (answer grounded in sources)
+    if compute_faithfulness and results and answer_text:
+        try:
+            score, unsupported, elapsed = compute_faithfulness(answer_text, results)
+            m.faithfulness = score
+            m.faithfulness_ms = elapsed
+            m.unsupported_sentences = unsupported if unsupported else None
+        except Exception:
+            m.faithfulness = None
+            m.faithfulness_ms = 0.0
+            m.unsupported_sentences = None
+
     notify("on_pipeline_end", m)
 
     return {"json": obj, "answer_text": answer_text, "metrics": m}
@@ -713,6 +749,7 @@ if __name__ == "__main__":
     p.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
     p.add_argument("--tier", choices=["minimal", "balanced", "full"], default="minimal",
                     help="Cost/performance tier: minimal (fast, default), balanced, full (best quality)")
+    p.add_argument("--no-faithfulness", action="store_true", help="Disable NLI faithfulness scoring")
     args = p.parse_args()
 
     if args.tier == "minimal":
@@ -755,6 +792,7 @@ if __name__ == "__main__":
         collection_chars=args.coll_chars,
         num_ctx=args.num_ctx,
         num_predict=args.num_predict,
+        compute_faithfulness=not args.no_faithfulness,
     )
     # Print count and answer
     used = out.get("json", {}).get("used_sources")
@@ -765,7 +803,8 @@ if __name__ == "__main__":
     print(f"Sources used: {used_int}")
     if args.metrics and "metrics" in out:
         m = out["metrics"]
-        print(f"Run: {m.run_id} | retrieval_ms={m.retrieval_ms:.0f} llm_ms={m.llm_ms:.0f} tokens~{m.prompt_tokens_approx}+{m.completion_tokens_approx}")
+        faith = f" faithfulness={m.faithfulness:.2f}" if m.faithfulness is not None else ""
+        print(f"Run: {m.run_id} | retrieval_ms={m.retrieval_ms:.0f} llm_ms={m.llm_ms:.0f} tokens~{m.prompt_tokens_approx}+{m.completion_tokens_approx}{faith}")
     print()
     ans_text = (out.get("answer_text", "") or "").strip()
     ans_text = _polish_answer(ans_text)

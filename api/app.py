@@ -54,6 +54,8 @@ class QueryResponse(BaseModel):
     retrieval_ms: float | None = None
     llm_ms: float | None = None
     total_ms: float | None = None
+    faithfulness: float | None = None
+    faithfulness_ms: float | None = None
 
 
 @app.get("/health")
@@ -103,8 +105,9 @@ def metrics(limit: int = 100):
     total_ms = [h.get("retrieval_ms", 0) + h.get("llm_ms", 0) for h in history if isinstance(h.get("retrieval_ms"), (int, float)) and isinstance(h.get("llm_ms"), (int, float))]
     retrieval_ms = [h["retrieval_ms"] for h in history if isinstance(h.get("retrieval_ms"), (int, float))]
     llm_ms = [h["llm_ms"] for h in history if isinstance(h.get("llm_ms"), (int, float))]
+    faithfulness_scores = [h["faithfulness"] for h in history if isinstance(h.get("faithfulness"), (int, float))]
 
-    return {
+    out = {
         "count": len(history),
         "latency_ms": {
             "total": {"avg": sum(total_ms) / len(total_ms) if total_ms else 0, "p50": _percentile(total_ms, 50), "p95": _percentile(total_ms, 95)},
@@ -113,6 +116,9 @@ def metrics(limit: int = 100):
         },
         "recent": history[-10:],
     }
+    if faithfulness_scores:
+        out["faithfulness"] = {"avg": sum(faithfulness_scores) / len(faithfulness_scores), "count": len(faithfulness_scores)}
+    return out
 
 
 @app.post("/query", response_model=QueryResponse)
@@ -136,6 +142,7 @@ def query(req: QueryRequest):
             collection_chars=6000,
             num_ctx=cfg.num_ctx,
             num_predict=cfg.num_predict,
+            compute_faithfulness=cfg.compute_faithfulness,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -154,6 +161,9 @@ def query(req: QueryRequest):
     llm_ms = m.llm_ms if m else None
     total_ms = (retrieval_ms + llm_ms) if (retrieval_ms is not None and llm_ms is not None) else None
 
+    faithfulness = m.faithfulness if m else None
+    faithfulness_ms = m.faithfulness_ms if (m and m.faithfulness is not None) else None
+
     return QueryResponse(
         answer=ans,
         used_sources=used,
@@ -162,4 +172,6 @@ def query(req: QueryRequest):
         retrieval_ms=retrieval_ms,
         llm_ms=llm_ms,
         total_ms=total_ms,
+        faithfulness=faithfulness,
+        faithfulness_ms=faithfulness_ms,
     )

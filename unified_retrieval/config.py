@@ -22,6 +22,9 @@ class RAGConfig:
     # Cost tiers: "minimal" (fast) | "balanced" | "full" (best quality)
     tier: str = "minimal"
 
+    # Faithfulness: NLI entailment check (answer grounded in sources)
+    compute_faithfulness: bool = True
+
     @classmethod
     def from_env(cls) -> "RAGConfig":
         c = cls()
@@ -39,6 +42,8 @@ class RAGConfig:
             c.num_predict = int(os.environ["RAG_NUM_PREDICT"])
         if os.getenv("RAG_TIER"):
             c.tier = os.environ["RAG_TIER"].lower()
+        if os.getenv("RAG_FAITHFULNESS", "").lower() in ("0", "false", "no"):
+            c.compute_faithfulness = False
         c._apply_tier()
         return c
 

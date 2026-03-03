@@ -45,6 +45,11 @@ class PipelineMetrics:
     sources_used: int = 0
     answer_length: int = 0
 
+    # Faithfulness (NLI entailment: answer grounded in sources)
+    faithfulness: Optional[float] = None
+    faithfulness_ms: float = 0.0
+    unsupported_sentences: Optional[list] = None
+
     # Cost proxies (for scaling decisions)
     embedding_calls: int = 0
     cross_encoder_calls: int = 0
