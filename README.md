@@ -11,8 +11,8 @@ Local, privacy-preserving retrieval-augmented generation for lender policy FAQs.
 
 - Python 3.11+
 - Ollama running locally with `nous-hermes2:latest` pulled
-- Local Chroma DB directory (defaults to `C:\Users\ottog\desktop\Chromaa`)
-- Lender text inputs directory (defaults to `C:\Users\ottog\desktop\extracted_pdfs`)
+- Local Chroma DB directory (defaults to `chroma_db/` in project root)
+- Lender guidelines directory (defaults to `guidelines/` in project root)
 - Python deps: `pip install -r requirements.txt`
 
 ### Optional/OS notes
