@@ -41,11 +41,6 @@ class PipelineMetrics:
     llm_ms: float = 0.0
     llm_retries: int = 0
 
-    # Coherence
-    coherence_score: float = 0.0
-    coherence_supported: int = 0
-    coherence_total: int = 0
-
     # Output
     sources_used: int = 0
     answer_length: int = 0
@@ -177,10 +172,7 @@ class LoggingStrategy(MeasurementStrategy):
 
     def on_pipeline_end(self, metrics: PipelineMetrics) -> None:
         self.log.info(
-            "pipeline | coherence=%.2f (%d/%d) sources=%d total_retrieval_ms=%.0f total_llm_ms=%.0f",
-            metrics.coherence_score,
-            metrics.coherence_supported,
-            metrics.coherence_total,
+            "pipeline | sources=%d retrieval_ms=%.0f llm_ms=%.0f",
             metrics.sources_used,
             metrics.retrieval_ms,
             metrics.llm_ms,

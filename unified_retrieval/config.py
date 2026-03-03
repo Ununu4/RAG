@@ -19,8 +19,8 @@ class RAGConfig:
     num_ctx: int = 12288
     num_predict: int = 512
 
-    # Cost tiers: "minimal" | "balanced" | "full"
-    tier: str = "balanced"
+    # Cost tiers: "minimal" (fast) | "balanced" | "full" (best quality)
+    tier: str = "minimal"
 
     @classmethod
     def from_env(cls) -> "RAGConfig":
@@ -39,7 +39,7 @@ class RAGConfig:
             c.num_predict = int(os.environ["RAG_NUM_PREDICT"])
         if os.getenv("RAG_TIER"):
             c.tier = os.environ["RAG_TIER"].lower()
-            c._apply_tier()
+        c._apply_tier()
         return c
 
     def _apply_tier(self) -> None:
@@ -49,7 +49,7 @@ class RAGConfig:
             self.use_rerank = False
             self.max_chars_per_doc = 1200
             self.num_ctx = 8192
-            self.num_predict = 256
+            self.num_predict = 384
         elif self.tier == "full":
             self.n_results = 8
             self.expand_neighbors = 2

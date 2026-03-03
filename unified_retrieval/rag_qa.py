@@ -3,17 +3,13 @@ from __future__ import annotations
 import json
 import logging
 import re
-import textwrap
 import time
 import uuid
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional
 
-import numpy as np
 import requests
 from chromadb import PersistentClient
-from sentence_transformers import SentenceTransformer
-
 from query_improved import semantic_query
 
 from backends import get_backend
@@ -49,53 +45,19 @@ def _format_sources(results: Dict, max_chars_per_doc: int = 2000) -> str:
 
 def _build_messages(query: str, sources_block: str, json_schema_hint: str, background: Optional[str] = None) -> List[Dict]:
     system = (
-        "You are a careful financial analyst. Answer ONLY from provided sources. "
-        "Cite multiple sources using their bracket IDs like [S1], [S2]. If unsure, say so. "
-        "Avoid repetition and spelling mistakes."
+        "You are a financial analyst. Answer ONLY from the Sources below. "
+        "Cite sources with [S1], [S2] etc. Be direct and factual. Output valid JSON only."
     )
-    # We intentionally omit background and distilled bullets to avoid content mixing
-    bg = ""
-    user = f"""
-Task:
-- Answer comprehensively and precisely using ONLY the Sources block below.
-- Do NOT include citations or [S#] IDs in the answer text.
-- Use clear sections and bullet lists when listing industries, states, documents, or notes.
-- Include 2-5 actionable recommendations ONLY if grounded in the sources.
-- Output strictly valid JSON matching the schema. No extra keys. No prose outside JSON.
-
-Use this exact section order and headings (omit sections with no data):
-1) Eligibility thresholds
-2) NSFs/Negative days
-3) Positions funded
-4) Term ranges
-5) Rate/Fee structure
-6) Max exposure
-7) Prepayment/Early payoff
-8) Renewal/Early renewal policy
-9) Stacking/Refi rules
-10) State/Industry restrictions
-11) Required documents by tiers
-12) Recommendations
-
-Formatting rules:
-- Use simple "- " bullets for lists (dash + space)
-- Avoid repetition and filler; be direct and factual
-- Make every sentence attributable to the Sources content
-- Ignore any mention of other lenders; apply only the identified lender's policies
-
-User query:
-{query}
+    user = f"""Query: {query}
 
 Sources:
 {sources_block}
 
-JSON schema (exact):
-{json_schema_hint}
-{bg}
+Respond with JSON: {json_schema_hint}
 """
     return [
         {"role": "system", "content": system},
-        {"role": "user", "content": textwrap.dedent(user).strip()},
+        {"role": "user", "content": user.strip()},
     ]
 
 def _distill_sources(results: Dict, max_bullets: int = 60) -> str:
@@ -189,44 +151,6 @@ def _filter_results_by_lender(results: Dict, expected_slug: str) -> Dict:
     if keep_ids:
         return {"ids": [keep_ids], "documents": [keep_docs], "metadatas": [keep_metas]}
     return results
-
-_ST: Optional[SentenceTransformer] = None
-def _get_st() -> SentenceTransformer:
-    global _ST
-    if _ST is None:
-        _ST = SentenceTransformer("sentence-transformers/multi-qa-MiniLM-L6-cos-v1")
-    return _ST
-
-def _split_answer_bullets(answer_text: str) -> List[str]:
-    lines: List[str] = []
-    for ln in (answer_text or "").splitlines():
-        s = ln.strip()
-        if not s:
-            continue
-        if s.startswith(("-", "*")) or ":" in s or len(s) > 20:
-            lines.append(s.lstrip("-* ").strip())
-    return lines[:50]
-
-def _coherence_score(answer_text: str, results: Dict, thresh: float = 0.55) -> Tuple[float, Tuple[int, int]]:
-    bullets = _split_answer_bullets(answer_text)
-    if not bullets:
-        return 0.0, (0, 0)
-    docs = results.get("documents", [[]])[0] if results else []
-    if not docs:
-        return 0.0, (0, len(bullets))
-    st = _get_st()
-    q_embs = st.encode(bullets)
-    d_texts = [d[:1000] for d in docs]
-    d_embs = st.encode(d_texts)
-    d_norm = d_embs / (np.linalg.norm(d_embs, axis=1, keepdims=True) + 1e-12)
-    sims: List[float] = []
-    for q in q_embs:
-        qn = q / (np.linalg.norm(q) + 1e-12)
-        scores = d_norm @ qn
-        sims.append(float(np.max(scores)))
-    avg = float(np.mean(sims))
-    supported = sum(1 for s in sims if s >= thresh)
-    return avg, (supported, len(bullets))
 
 def _polish_answer(answer: str) -> str:
     a = (answer or "").strip()
@@ -524,7 +448,7 @@ def answer_query(
         m.error = "no_results_after_filter"
         notify("on_pipeline_end", m)
         return {
-            "json": {"used_sources": 0, "coherence": 0.0},
+            "json": {"used_sources": 0},
             "answer_text": f"No lender-specific results found for '{expected_slug}'. Please verify the lender name or try a different query.",
             "metrics": m,
         }
@@ -536,10 +460,7 @@ def answer_query(
     background = None
 
     # 3) Ask LLM for minimal structured JSON (answer + used_sources)
-    json_schema_hint = """{
-  "answer": "human-readable answer with sections and bullet lists as needed; no citations",
-  "used_sources": 0
-}"""
+    json_schema_hint = '{"answer": "your answer here. Use [S1], [S2] to cite sources.", "used_sources": 0}'
     messages = _build_messages(query, sources_block, json_schema_hint, background=background)
     prompt_text = " ".join(str(m.get("content", "")) for m in messages)
     m.prompt_tokens_approx = _approx_tokens(prompt_text)
@@ -571,8 +492,8 @@ def answer_query(
                         metas_bg = got.get("metadatas", [])
                         acc: List[str] = []
                         total = 0
-                        for d, m in zip(docs_bg, metas_bg):
-                            section = m.get("section") if isinstance(m, dict) else None
+                        for d, meta in zip(docs_bg, metas_bg):
+                            section = meta.get("section") if isinstance(meta, dict) else None
                             prefix = f"[{section}] " if section else ""
                             snippet = (d or "")[:300]
                             piece = prefix + snippet
@@ -597,18 +518,31 @@ def answer_query(
 
     notify("on_llm_end", m)
 
-    # 4) Parse JSON robustly (fallback: extract first JSON block)
+    # 4) Parse JSON robustly (extract block, unwrap nested JSON)
     try:
         obj = json.loads(raw)
     except Exception:
-        m = re.search(r"\{[\s\S]*\}", raw)
-        if m:
+        match = re.search(r"\{[\s\S]*\}", raw)
+        if match:
             try:
-                obj = json.loads(m.group(0))
+                obj = json.loads(match.group(0))
             except Exception:
                 obj = {"answer": raw, "used_sources": 0}
         else:
             obj = {"answer": raw, "used_sources": 0}
+
+    # Unwrap double-encoded answer (model sometimes returns JSON string inside answer)
+    answer_text = (obj.get("answer") or "").strip()
+    if answer_text.startswith("{") and '"answer"' in answer_text[:200]:
+        try:
+            inner = json.loads(answer_text)
+            if isinstance(inner, dict) and "answer" in inner:
+                answer_text = (inner.get("answer") or "").strip()
+        except Exception:
+            pass
+
+    if not answer_text:
+        answer_text = "No summary produced from sources."
 
     # 5) Determine sources count (prefer model's used_sources; fallback to retrieved count)
     used_sources = obj.get("used_sources")
@@ -617,20 +551,6 @@ def answer_query(
         used_sources = min(total, n_results)
         obj["used_sources"] = used_sources
 
-    # Render final answer text directly from the model's answer (no normalization to avoid mixing)
-    answer_text = (obj.get("answer") or "").strip()
-    if not answer_text:
-        answer_text = "No summary produced from sources."
-
-    # Compute coherence score against retrieved docs
-    coh, (hit, total) = _coherence_score(answer_text, results)
-    obj["coherence"] = coh
-    obj["coherence_supported"] = hit
-    obj["coherence_total"] = total
-
-    m.coherence_score = coh
-    m.coherence_supported = hit
-    m.coherence_total = total
     m.sources_used = used_sources
     m.answer_length = len(answer_text)
     notify("on_pipeline_end", m)
@@ -660,8 +580,8 @@ if __name__ == "__main__":
     p.add_argument("--metrics", action="store_true", help="Enable logging + JSONL metrics output")
     p.add_argument("--log-dir", type=Path, default=_ROOT / "logs", help="Log directory")
     p.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
-    p.add_argument("--tier", choices=["minimal", "balanced", "full"], default="balanced",
-                    help="Cost/performance tier: minimal (fast), balanced, full (best quality)")
+    p.add_argument("--tier", choices=["minimal", "balanced", "full"], default="minimal",
+                    help="Cost/performance tier: minimal (fast, default), balanced, full (best quality)")
     args = p.parse_args()
 
     if args.tier == "minimal":
@@ -670,7 +590,7 @@ if __name__ == "__main__":
         args.rerank = False
         args.doc_chars = 1200
         args.num_ctx = 8192
-        args.num_predict = 256
+        args.num_predict = 384
     elif args.tier == "full":
         args.n = 8
         args.expand = 2
@@ -712,11 +632,6 @@ if __name__ == "__main__":
     except Exception:
         used_int = 0
     print(f"Sources used: {used_int}")
-    coh = out.get("json", {}).get("coherence")
-    cs = out.get("json", {}).get("coherence_supported")
-    ct = out.get("json", {}).get("coherence_total")
-    if isinstance(coh, float) and isinstance(cs, int) and isinstance(ct, int) and ct > 0:
-        print(f"Coherence: {coh:.2f} ({cs}/{ct})")
     if args.metrics and "metrics" in out:
         m = out["metrics"]
         print(f"Run: {m.run_id} | retrieval_ms={m.retrieval_ms:.0f} llm_ms={m.llm_ms:.0f} tokens~{m.prompt_tokens_approx}+{m.completion_tokens_approx}")

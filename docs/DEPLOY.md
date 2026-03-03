@@ -50,5 +50,8 @@ docker run -p 8000:8000 -v "$(pwd)/chroma_db:/app/chroma_db" \
 | Method | Path   | Description        |
 |--------|--------|--------------------|
 | GET    | /health | Liveness check     |
-| GET    | /metrics | Placeholder       |
-| POST   | /query | `{"query":"...","collection":null,"tier":"balanced"}` |
+| GET    | /metrics | Aggregated latency stats |
+| GET    | /collections | List lenders     |
+| POST   | /query | `{"query":"...","collection":null,"tier":"minimal"}` (tier: minimal|balanced|full) |
+
+Default tier is `minimal` for speed. Use `tier: "balanced"` or `tier: "full"` for higher quality.

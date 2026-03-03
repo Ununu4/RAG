@@ -31,12 +31,6 @@ For the query *"What is the minimum FICO score for Alternative Funding Group?"*:
 - **Options:** `temperature=0.1`, `num_ctx=12288`, `num_predict=512`, `format=json`
 - **Output:** `{"answer": "The minimum FICO score for Alternative Funding Group is 550.", "used_sources": 1}`
 
-### 6. Coherence Score
-- **Method:** Split answer into bullets; embed each bullet and each retrieved doc
-- **Score:** Mean of max cosine similarity per bullet vs docs
-- **Threshold:** 0.55 for "supported"
-- **Result:** 0.57 (1/1) → one bullet, supported by retrieved text
-
 ---
 
 ## Why Sources Used = 1
@@ -64,6 +58,6 @@ The LLM returned `used_sources: 1` because the answer was concise and the model 
 | `--num-predict` | 512 | Lower → shorter answers |
 
 ### Scaling Considerations
-- **Embedding calls:** 1 (Chroma) + 1 (query) + 1 (docs) for MMR + N for coherence
+- **Embedding calls:** 1 (Chroma) + 1 (query) + 1 (docs) for MMR
 - **Cross-encoder:** N calls when rerank enabled (N = docs after MMR)
 - **LLM:** Single request; retry with trimmed prompt on 500

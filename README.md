@@ -5,7 +5,7 @@ Local, privacy-preserving retrieval-augmented generation for lender policy FAQs.
 - `pre_processing/agent.py`: ingests lender `.txt` files, chunks them, embeds with `multi-qa-MiniLM-L6-cos-v1`, and writes to Chroma collections named `lender-<slug>`.
 - `unified_retrieval/`: serves answers from those embeddings.
   - `query_improved.py`: wraps Chroma semantic search with MMR, optional cross-encoder re-rank, and neighbor expansion.
-  - `rag_qa.py`: retrieves lender-specific evidence, filters out cross-lender noise, and asks a local Ollama model (`nous-hermes2:latest`) to return a structured answer plus coherence diagnostics.
+  - `rag_qa.py`: retrieves lender-specific evidence, filters out cross-lender noise, and asks the LLM (Ollama/Groq/Bedrock) to return a structured answer with citations [S1], [S2].
 
 ## Requirements
 
@@ -57,16 +57,16 @@ What it does:
 - Auto-detects the most likely `lender-*` collection if `--collection` is omitted.
 - Retrieves evidence with MMR + optional cross-encoder rerank and neighbor expansion (via `query_improved.py`).
 - Filters to the intended lender and drops chunks that mention other lenders.
-- Prompts Ollama to return a JSON answer (no citations) and reports coherence vs. retrieved text.
+- Prompts the LLM to return JSON with answer text and used_sources. Citations [S1], [S2] allowed.
 
-Outputs: printed source count, coherence score, and the polished answer text.
+Outputs: source count, latency metrics, and the answer text.
 
 ## Current development pipeline
 
 1. Prepare lender `.txt` files with metadata headers (`LENDER_ID`, `LENDER_NAME`, `SOURCE_FILE`) followed by a dashed line and body content.
 2. Run `agent.py` to (re)build Chroma collections under `lender-<slug>` names.
 3. Serve queries locally by running `rag_qa.py` against the Chroma path and local Ollama.
-4. Validate coherence scores and iterate on prompt/retrieval knobs (`--n`, `--expand`, `--rerank`) as needed.
+4. Iterate on prompt/retrieval knobs (`--n`, `--expand`, `--rerank`, `--tier`) as needed. See `docs/RELIABILITY.md`.
 
 ## Repository layout
 

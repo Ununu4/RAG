@@ -4,6 +4,7 @@ Run: uvicorn api.app:app --host 0.0.0.0 --port 8000
 """
 from __future__ import annotations
 
+import json
 import os
 import sys
 from pathlib import Path
@@ -22,10 +23,16 @@ from chromadb import PersistentClient
 
 from unified_retrieval.rag_qa import answer_query
 from unified_retrieval.config import RAGConfig
+from unified_retrieval.monitoring import JsonFileStrategy, clear_strategies, register_strategy
 
 app = FastAPI(title="RAG QA API", version="1.0.0")
 
 _DEFAULT_CHROMA = os.getenv("RAG_CHROMA_PATH", str(_ROOT / "chroma_db"))
+_METRICS_FILE = _ROOT / "logs" / "rag_metrics.jsonl"
+
+# Persist metrics for every /query (enables /metrics aggregates)
+clear_strategies()
+register_strategy(JsonFileStrategy(_METRICS_FILE))
 
 
 def _list_collections():
@@ -36,17 +43,17 @@ def _list_collections():
 class QueryRequest(BaseModel):
     query: str = Field(..., min_length=1)
     collection: str | None = Field(None, description="Lender name: 'bitty', 'alternative-funding-group', or null for auto-detect")
-    tier: str = "balanced"
+    tier: str = Field("minimal", description="minimal (fast), balanced, full (best quality)")
 
 
 class QueryResponse(BaseModel):
     answer: str
     used_sources: int
-    coherence: float | None
-    coherence_supported: int | None
-    coherence_total: int | None
     collection: str
     run_id: str | None = None
+    retrieval_ms: float | None = None
+    llm_ms: float | None = None
+    total_ms: float | None = None
 
 
 @app.get("/health")
@@ -60,10 +67,52 @@ def collections():
     return {"collections": _list_collections()}
 
 
+def _load_metrics_history(limit: int = 100) -> list[dict]:
+    """Read recent metrics from JSONL file."""
+    if not _METRICS_FILE.exists():
+        return []
+    lines = []
+    with open(_METRICS_FILE, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                try:
+                    lines.append(json.loads(line))
+                except Exception:
+                    pass
+    return lines[-limit:]
+
+
+def _percentile(arr: list[float], p: float) -> float:
+    if not arr:
+        return 0.0
+    s = sorted(arr)
+    k = (len(s) - 1) * p / 100
+    f = int(k)
+    c = min(f + 1, len(s) - 1)
+    return s[f] + (k - f) * (s[c] - s[f]) if f < len(s) - 1 else s[-1]
+
+
 @app.get("/metrics")
-def metrics():
-    """Placeholder for pipeline metrics. Extend with JsonFileStrategy if needed."""
-    return {"message": "Enable --metrics in CLI for JSONL output"}
+def metrics(limit: int = 100):
+    """Aggregated pipeline metrics from recent queries."""
+    history = _load_metrics_history(limit)
+    if not history:
+        return {"count": 0, "message": "No metrics yet. Run /query to populate."}
+
+    total_ms = [h.get("retrieval_ms", 0) + h.get("llm_ms", 0) for h in history if isinstance(h.get("retrieval_ms"), (int, float)) and isinstance(h.get("llm_ms"), (int, float))]
+    retrieval_ms = [h["retrieval_ms"] for h in history if isinstance(h.get("retrieval_ms"), (int, float))]
+    llm_ms = [h["llm_ms"] for h in history if isinstance(h.get("llm_ms"), (int, float))]
+
+    return {
+        "count": len(history),
+        "latency_ms": {
+            "total": {"avg": sum(total_ms) / len(total_ms) if total_ms else 0, "p50": _percentile(total_ms, 50), "p95": _percentile(total_ms, 95)},
+            "retrieval": {"avg": sum(retrieval_ms) / len(retrieval_ms) if retrieval_ms else 0},
+            "llm": {"avg": sum(llm_ms) / len(llm_ms) if llm_ms else 0},
+        },
+        "recent": history[-10:],
+    }
 
 
 @app.post("/query", response_model=QueryResponse)
@@ -98,26 +147,19 @@ def query(req: QueryRequest):
     except (TypeError, ValueError):
         used = 0
 
-    coh = j.get("coherence")
-    cs = j.get("coherence_supported")
-    ct = j.get("coherence_total")
-    if isinstance(coh, (int, float)) and isinstance(cs, int) and isinstance(ct, int) and ct > 0:
-        coh_val = float(coh)
-    else:
-        coh_val = None
-        cs = None
-        ct = None
-
     m = out.get("metrics")
     run_id = m.run_id if m else None
     collection = m.collection if m else (req.collection or "unknown")
+    retrieval_ms = m.retrieval_ms if m else None
+    llm_ms = m.llm_ms if m else None
+    total_ms = (retrieval_ms + llm_ms) if (retrieval_ms is not None and llm_ms is not None) else None
 
     return QueryResponse(
         answer=ans,
         used_sources=used,
-        coherence=coh_val,
-        coherence_supported=cs,
-        coherence_total=ct,
         collection=collection,
         run_id=run_id,
+        retrieval_ms=retrieval_ms,
+        llm_ms=llm_ms,
+        total_ms=total_ms,
     )
