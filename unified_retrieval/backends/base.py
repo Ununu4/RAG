@@ -21,10 +21,13 @@ class LLMBackend(ABC):
 
 
 def get_backend() -> LLMBackend:
-    """Return backend from env: RAG_BACKEND=aws | local (default)."""
+    """Return backend from env: RAG_BACKEND=aws | groq | local (default)."""
     backend = (os.getenv("RAG_BACKEND") or "local").lower()
     if backend == "aws":
         from .aws import BedrockBackend
         return BedrockBackend()
+    if backend == "groq":
+        from .groq import GroqBackend
+        return GroqBackend()
     from .local import OllamaBackend
     return OllamaBackend()

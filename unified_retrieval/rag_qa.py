@@ -401,6 +401,27 @@ def _slugify(text: str) -> str:
     return re.sub(r"[^\w\-]+", "-", text.lower()).strip("-")
 
 
+def _resolve_collection(short_name: Optional[str], chroma_path: str) -> Optional[str]:
+    """Resolve short names like 'Bitty' or 'bitty' to full collection name 'lender-bitty-advance'."""
+    if not short_name or not short_name.strip():
+        return short_name
+    s = short_name.strip().lower().replace("_", "-")
+    s = re.sub(r"[^\w\-]+", "-", s).strip("-")
+    if not s:
+        return short_name
+    if s.startswith("lender-"):
+        return s
+    client = PersistentClient(path=chroma_path)
+    for c in client.list_collections():
+        name = getattr(c, "name", "")
+        if not name.startswith("lender-"):
+            continue
+        slug = name.replace("lender-", "")
+        if s == slug or s in slug or slug.startswith(s):
+            return name
+    return short_name  # pass through, will error with clear message
+
+
 def _detect_collection_for_query(query: str, chroma_path: str, default_collection: str) -> str:
     client = PersistentClient(path=chroma_path)
     cols = client.list_collections()
@@ -465,7 +486,8 @@ def answer_query(
     m.run_id = str(uuid.uuid4())[:8]
 
     # 1) Retrieve top evidence (MMR + rerank + optional neighbor expansion)
-    chosen_collection = collection or _detect_collection_for_query(
+    resolved = _resolve_collection(collection, chroma_path) if collection else None
+    chosen_collection = resolved or _detect_collection_for_query(
         query, chroma_path, default_collection="lender-alternative-funding-group"
     )
     m.collection = chosen_collection

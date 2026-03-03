@@ -18,6 +18,8 @@ if str(_ROOT / "unified_retrieval") not in sys.path:
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
+from chromadb import PersistentClient
+
 from unified_retrieval.rag_qa import answer_query
 from unified_retrieval.config import RAGConfig
 
@@ -26,9 +28,14 @@ app = FastAPI(title="RAG QA API", version="1.0.0")
 _DEFAULT_CHROMA = os.getenv("RAG_CHROMA_PATH", str(_ROOT / "chroma_db"))
 
 
+def _list_collections():
+    client = PersistentClient(path=_DEFAULT_CHROMA)
+    return [c.name for c in client.list_collections() if getattr(c, "name", "").startswith("lender-")]
+
+
 class QueryRequest(BaseModel):
     query: str = Field(..., min_length=1)
-    collection: str | None = None
+    collection: str | None = Field(None, description="Lender name: 'bitty', 'alternative-funding-group', or null for auto-detect")
     tier: str = "balanced"
 
 
@@ -45,6 +52,12 @@ class QueryResponse(BaseModel):
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/collections")
+def collections():
+    """List available lender collections. Use short names (e.g. 'bitty') in /query."""
+    return {"collections": _list_collections()}
 
 
 @app.get("/metrics")

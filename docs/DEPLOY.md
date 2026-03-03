@@ -20,6 +20,12 @@ docker build -t rag-api .
 # Run (mount chroma_db)
 docker run -p 8000:8000 -v "$(pwd)/chroma_db:/app/chroma_db" rag-api
 
+# Groq (fast, free tier)
+docker run -p 8000:8000 -v "$(pwd)/chroma_db:/app/chroma_db" \
+  -e RAG_BACKEND=groq \
+  -e GROQ_API_KEY=your_key \
+  rag-api
+
 # AWS Bedrock
 docker run -p 8000:8000 -v "$(pwd)/chroma_db:/app/chroma_db" \
   -e RAG_BACKEND=aws \
