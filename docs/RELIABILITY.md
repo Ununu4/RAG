@@ -2,6 +2,23 @@
 
 Design choices for accuracy and reliability in the RAG demo.
 
+## Query Understanding
+
+| Component | Purpose |
+|-----------|---------|
+| **Intent extraction** | LLM call before retrieval: extracts industry, lender, intent from query |
+| **which_lender intent** | When user asks "what lender could fund", triggers multi-lender search |
+| **Prompt context** | "User is asking about {industry} deals" or "LENDER RECOMMENDATION" — improves relevance |
+| **Query expansion** | When industry known: appends "industry eligibility requirements" to search query |
+
+## Multi-Lender Search
+
+| Component | Purpose |
+|-----------|---------|
+| **Trigger** | intent=which_lender + collection=null (e.g. "what lender could fund a restaurant with 2 positions?") |
+| **Search** | Queries all lender collections, top 2 per lender, merge and rank by distance |
+| **Output** | Sources from multiple lenders → LLM recommends best match(es) |
+
 ## Retrieval
 
 | Component | Purpose |

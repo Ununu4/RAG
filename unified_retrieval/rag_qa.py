@@ -33,6 +33,29 @@ def _invoke_llm(messages: List[Dict], num_ctx: int = 12288, num_predict: int = 5
     return backend.invoke(messages, num_ctx=num_ctx, num_predict=num_predict)
 
 
+def _understand_query(query: str) -> Dict:
+    """Extract industry, lender, intent for prompt context. Uses same backend (Groq/Ollama)."""
+    backend = get_backend()
+    msg = [{"role": "user", "content": f"""Extract from this lender FAQ query. Return ONLY valid JSON, no other text.
+{{"industry": "industry if mentioned else null", "lender": "lender name if mentioned else null", "intent": "which_lender|eligibility|requirements|restrictions|comparison|other"}}
+
+Use "which_lender" when the user asks which/what lender could fund, who could fund, recommend a lender, or similar.
+Query: {query}"""}]
+    try:
+        raw = backend.invoke(msg, num_ctx=4096, num_predict=80)
+        match = re.search(r"\{[^{}]*\}", raw)
+        if match:
+            obj = json.loads(match.group(0))
+            return {
+                "industry": obj.get("industry") or None,
+                "lender": obj.get("lender") or None,
+                "intent": obj.get("intent") or "other",
+            }
+    except Exception:
+        pass
+    return {"industry": None, "lender": None, "intent": "other"}
+
+
 def _format_sources(results: Dict, max_chars_per_doc: int = 2000) -> str:
     lines = []
     for i, (rid, doc, meta) in enumerate(zip(results["ids"][0], results["documents"][0], results["metadatas"][0]), 1):
@@ -43,13 +66,29 @@ def _format_sources(results: Dict, max_chars_per_doc: int = 2000) -> str:
         lines.append(src + "\n" + preview)
     return "\n\n".join(lines)
 
-def _build_messages(query: str, sources_block: str, json_schema_hint: str, background: Optional[str] = None) -> List[Dict]:
+def _build_messages(
+    query: str,
+    sources_block: str,
+    json_schema_hint: str,
+    intent_context: Optional[Dict] = None,
+    background: Optional[str] = None,
+) -> List[Dict]:
     system = (
         "You are a financial analyst. Answer ONLY from the Sources below. "
         "Cite sources with [S1], [S2] etc. Be direct and factual. Output valid JSON only."
     )
+    focus = ""
+    if intent_context:
+        industry = intent_context.get("industry")
+        intent = intent_context.get("intent", "other")
+        if intent == "which_lender":
+            focus = "\nContext: The user wants a LENDER RECOMMENDATION. Sources are from multiple lenders. Recommend the best match(es) based on the user's criteria (industry, revenue, positions, etc). Compare options if several fit.\n"
+        elif industry:
+            focus = f"\nContext: The user is asking about {industry} deals. Focus your answer on what applies to {industry} specifically.\n"
+        elif intent != "other":
+            focus = f"\nContext: User intent is {intent}. Tailor your answer accordingly.\n"
     user = f"""Query: {query}
-
+{focus}
 Sources:
 {sources_block}
 
@@ -390,6 +429,77 @@ def _approx_tokens(text: str) -> int:
     return max(0, len((text or "").strip()) // 4)
 
 
+def _get_lender_collections(chroma_path: str) -> List[str]:
+    """List all lender collection names."""
+    client = PersistentClient(path=chroma_path)
+    return [c.name for c in client.list_collections() if getattr(c, "name", "").startswith("lender-")]
+
+
+def _multi_collection_search(
+    query_text: str,
+    chroma_path: str,
+    n_per_collection: int = 2,
+    n_total: int = 12,
+    metrics_callback: Optional[Callable[[Dict], None]] = None,
+) -> Dict:
+    """Search across all lender collections, merge and rank by relevance."""
+    import time as _time
+    t0 = _time.perf_counter()
+    collections = _get_lender_collections(chroma_path)
+    if not collections:
+        return {"ids": [[]], "documents": [[]], "metadatas": [[]]}
+
+    all_ids: List[str] = []
+    all_docs: List[str] = []
+    all_metas: List[Dict] = []
+    all_distances: List[float] = []
+
+    for coll_name in collections:
+        try:
+            res = semantic_query(
+                query_text=query_text,
+                collection_name=coll_name,
+                chroma_path=chroma_path,
+                n_results=n_per_collection,
+                mmr=True,
+                rerank=False,
+                expand_neighbors=0,
+            )
+            ids = res["ids"][0]
+            docs = res["documents"][0]
+            metas = res["metadatas"][0]
+            dists = res.get("distances", [[1.0] * len(ids)])[0]
+            for i, (rid, doc, meta) in enumerate(zip(ids, docs, metas)):
+                all_ids.append(rid)
+                all_docs.append(doc)
+                all_metas.append(meta)
+                all_distances.append(dists[i] if i < len(dists) else 1.0)
+        except Exception:
+            continue
+
+    # Sort by distance (lower = more relevant)
+    if all_distances:
+        order = sorted(range(len(all_distances)), key=lambda i: all_distances[i])
+        keep = order[:n_total]
+        all_ids = [all_ids[i] for i in keep]
+        all_docs = [all_docs[i] for i in keep]
+        all_metas = [all_metas[i] for i in keep]
+
+    retrieval_ms = (_time.perf_counter() - t0) * 1000
+    if metrics_callback:
+        metrics_callback({
+            "retrieval_candidates": len(collections) * n_per_collection,
+            "retrieval_after_mmr": len(all_ids),
+            "retrieval_after_rerank": len(all_ids),
+            "retrieval_after_expand": len(all_ids),
+            "retrieval_ms": retrieval_ms,
+            "embedding_calls": len(collections) * 2,
+            "cross_encoder_calls": 0,
+        })
+
+    return {"ids": [all_ids], "documents": [all_docs], "metadatas": [all_metas]}
+
+
 def answer_query(
     query: str,
     collection: Optional[str],
@@ -409,12 +519,19 @@ def answer_query(
     m.query = query
     m.run_id = str(uuid.uuid4())[:8]
 
-    # 1) Retrieve top evidence (MMR + rerank + optional neighbor expansion)
-    resolved = _resolve_collection(collection, chroma_path) if collection else None
-    chosen_collection = resolved or _detect_collection_for_query(
-        query, chroma_path, default_collection="lender-alternative-funding-group"
+    # 0) Query understanding (industry, lender, intent) for prompt context + retrieval
+    intent_context = _understand_query(query)
+
+    # Expand search query when industry is known (improves retrieval relevance)
+    search_query = query
+    if intent_context.get("industry"):
+        search_query = f"{query} {intent_context['industry']} industry eligibility requirements"
+
+    # 1) Retrieve top evidence
+    use_multi_lender = (
+        intent_context.get("intent") == "which_lender"
+        and collection is None
     )
-    m.collection = chosen_collection
 
     def on_retrieval(stats: Dict) -> None:
         m.retrieval_candidates = stats.get("retrieval_candidates", 0)
@@ -425,31 +542,45 @@ def answer_query(
         m.embedding_calls = stats.get("embedding_calls", 0)
         m.cross_encoder_calls = stats.get("cross_encoder_calls", 0)
 
-    results = semantic_query(
-        query_text=query,
-        collection_name=chosen_collection,
-        chroma_path=chroma_path,
-        n_results=n_results,
-        mmr=True,
-        rerank=use_rerank,
-        expand_neighbors=expand_neighbors,
-        metrics_callback=on_retrieval,
-    )
-
-    # Strictly keep docs from the identified lender only
-    expected_slug = chosen_collection.replace("lender-", "")
-    results = _filter_results_by_lender(results, expected_slug)
-    # Drop docs that mention other lenders at the content level
-    results = _filter_cross_lender_mentions(results, expected_slug, chroma_path)
+    if use_multi_lender:
+        m.collection = "multi"
+        results = _multi_collection_search(
+            query_text=search_query,
+            chroma_path=chroma_path,
+            n_per_collection=2,
+            n_total=min(n_results * 2, 14),
+            metrics_callback=on_retrieval,
+        )
+        # No lender filter—we want docs from multiple lenders
+    else:
+        resolved = _resolve_collection(collection, chroma_path) if collection else None
+        chosen_collection = resolved or _detect_collection_for_query(
+            search_query, chroma_path, default_collection="lender-alternative-funding-group"
+        )
+        m.collection = chosen_collection
+        results = semantic_query(
+            query_text=search_query,
+            collection_name=chosen_collection,
+            chroma_path=chroma_path,
+            n_results=n_results,
+            mmr=True,
+            rerank=use_rerank,
+            expand_neighbors=expand_neighbors,
+            metrics_callback=on_retrieval,
+        )
+        expected_slug = chosen_collection.replace("lender-", "")
+        results = _filter_results_by_lender(results, expected_slug)
+        results = _filter_cross_lender_mentions(results, expected_slug, chroma_path)
     m.retrieval_after_filter = len(results.get("ids", [[]])[0]) if results else 0
     notify("on_retrieval_end", m)
     # If nothing survives filtering, fail fast with a grounded message
     if not results.get("ids") or not results["ids"][0]:
         m.error = "no_results_after_filter"
         notify("on_pipeline_end", m)
+        err_slug = "any lender" if use_multi_lender else expected_slug
         return {
             "json": {"used_sources": 0},
-            "answer_text": f"No lender-specific results found for '{expected_slug}'. Please verify the lender name or try a different query.",
+            "answer_text": f"No lender-specific results found for '{err_slug}'. Please verify the lender name or try a different query.",
             "metrics": m,
         }
 
@@ -461,7 +592,7 @@ def answer_query(
 
     # 3) Ask LLM for minimal structured JSON (answer + used_sources)
     json_schema_hint = '{"answer": "your answer here. Use [S1], [S2] to cite sources.", "used_sources": 0}'
-    messages = _build_messages(query, sources_block, json_schema_hint, background=background)
+    messages = _build_messages(query, sources_block, json_schema_hint, intent_context=intent_context, background=background)
     prompt_text = " ".join(str(m.get("content", "")) for m in messages)
     m.prompt_tokens_approx = _approx_tokens(prompt_text)
     notify("on_llm_start", m)
@@ -483,7 +614,7 @@ def answer_query(
                 # Rebuild prompt smaller
                 sources_block = _format_sources(results, max_chars_per_doc=trimmed_doc_chars)
                 background = None
-                if include_collection_context:
+                if include_collection_context and not use_multi_lender:
                     try:
                         client_bg = PersistentClient(path=chroma_path)
                         col_bg = client_bg.get_collection(chosen_collection)
@@ -505,7 +636,7 @@ def answer_query(
                     except Exception:
                         background = None
 
-                messages = _build_messages(query, sources_block, json_schema_hint, background=background)
+                messages = _build_messages(query, sources_block, json_schema_hint, intent_context=intent_context, background=background)
                 m.llm_retries += 1
                 t0 = time.perf_counter()
                 raw = _invoke_llm(messages, num_ctx=trimmed_ctx, num_predict=num_predict)
