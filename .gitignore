@@ -1,6 +1,7 @@
 .venv/
 chroma_db/
 logs/
+api_server.log
 __pycache__/
 *.pyc
 *.pyo
