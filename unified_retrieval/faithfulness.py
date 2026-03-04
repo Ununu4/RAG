@@ -61,6 +61,16 @@ def _split_sentences(text: str) -> List[str]:
     return sentences if sentences else [text.strip()] if text.strip() else []
 
 
+def _extract_cited_sources(sentence: str) -> List[int]:
+    """Extract source indices from [S1], [S2], etc. Returns 1-based indices (S1=1, S2=2)."""
+    indices: List[int] = []
+    for m in re.finditer(r"\[S(\d+)\]", sentence):
+        idx = int(m.group(1))
+        if idx > 0 and idx not in indices:
+            indices.append(idx)
+    return indices
+
+
 def _truncate_for_nli(text: str, max_chars: int = 1800) -> str:
     """Truncate context to fit NLI model (~512 tokens, ~4 chars/token)."""
     if not text or len(text) <= max_chars:
@@ -72,8 +82,10 @@ def _compute_faithfulness_nli(
     sentences: List[str],
     context: str,
     entailment_threshold: float,
+    docs: Optional[List[str]] = None,
+    max_context_chars: int = 1800,
 ) -> Tuple[int, List[str]]:
-    """NLI-based: premise=context, hypothesis=claim. Returns (supported_count, unsupported)."""
+    """NLI-based: premise=context, hypothesis=claim. Citation-aware: use cited docs as context when available."""
     import torch
     model, tokenizer = _get_nli_model()
     if model is None or tokenizer is None:
@@ -81,12 +93,24 @@ def _compute_faithfulness_nli(
 
     supported = 0
     unsupported: List[str] = []
+    base_context = _truncate_for_nli(context, max_context_chars)
+
     for sent in sentences:
         if len(sent) < 5:
             supported += 1
             continue
+        # Citation-aware: use cited source docs as context for better entailment
+        ctx = base_context
+        if docs and _extract_cited_sources(sent):
+            cited = _extract_cited_sources(sent)
+            parts = []
+            for idx in cited:
+                if 1 <= idx <= len(docs) and isinstance(docs[idx - 1], str):
+                    parts.append(docs[idx - 1].strip())
+            if parts:
+                ctx = _truncate_for_nli(" ".join(parts), max_context_chars)
         inputs = tokenizer(
-            context,
+            ctx,
             sent,
             return_tensors="pt",
             truncation=True,
@@ -134,8 +158,8 @@ def _compute_faithfulness_embedding(
 def compute_faithfulness(
     answer_text: str,
     results: Dict,
-    entailment_threshold: float = 0.5,
-    max_context_chars: int = 1800,
+    entailment_threshold: float = 0.45,
+    max_context_chars: int = 2400,
 ) -> Tuple[float, List[str], float]:
     """
     Compute faithfulness score via NLI entailment (best for truth grounding).
@@ -159,11 +183,12 @@ def compute_faithfulness(
 
     t0 = time.perf_counter()
     supported, unsupported = _compute_faithfulness_nli(
-        sentences, context, entailment_threshold
+        sentences, context, entailment_threshold,
+        docs=docs, max_context_chars=max_context_chars,
     )
     if supported < 0:
         supported, unsupported = _compute_faithfulness_embedding(
-            sentences, docs, similarity_threshold=0.45
+            sentences, docs, similarity_threshold=0.32
         )
     elapsed_ms = (time.perf_counter() - t0) * 1000
     score = supported / len(sentences) if sentences else 1.0

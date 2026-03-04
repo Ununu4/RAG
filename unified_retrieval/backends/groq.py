@@ -6,7 +6,7 @@ from typing import Dict, List
 import requests
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-DEFAULT_MODEL = "llama-3.1-8b-instant"
+DEFAULT_MODEL = "llama-3.3-70b-versatile"
 
 
 class GroqBackend:
@@ -22,7 +22,7 @@ class GroqBackend:
     def name(self) -> str:
         return "groq"
 
-    def invoke(self, messages: List[Dict], temperature: float = 0.1, num_ctx: int = None, num_predict: int = 512, **kwargs) -> str:
+    def invoke(self, messages: List[Dict], temperature: float = 0.0, num_ctx: int = None, num_predict: int = 512, **kwargs) -> str:
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -32,6 +32,7 @@ class GroqBackend:
             "messages": messages,
             "temperature": temperature,
             "max_tokens": num_predict,
+            "response_format": {"type": "json_object"},
         }
         r = requests.post(GROQ_API_URL, headers=headers, json=payload, timeout=60)
         r.raise_for_status()

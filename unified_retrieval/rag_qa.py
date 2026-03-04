@@ -14,7 +14,7 @@ from query_improved import semantic_query
 
 from backends import get_backend
 
-from faithfulness import compute_faithfulness
+from faithfulness import compute_faithfulness as _compute_faithfulness_score
 from monitoring import (
     CostAwareStrategy,
     JsonFileStrategy,
@@ -28,46 +28,503 @@ from monitoring import (
     timed,
 )
 
+# ---------------------------------------------------------------------------
+# Lender eligibility registry — sourced directly from guidelines files.
+# Used for: (1) deterministic pre-filtering before Chroma queries,
+#           (2) structured source headers in the prompt.
+#
+# Fields:
+#   min_revenue       : minimum monthly revenue in dollars (None = no hard min)
+#   max_position      : maximum position accepted (e.g. 3 = up to 3rd; 99 = no limit)
+#   restricted_states : list of uppercase 2-letter state codes that are restricted/declined
+#   prohibited_keywords: lowercase industry keyword fragments that trigger exclusion
+#   display_name      : human-readable lender name for source headers
+# ---------------------------------------------------------------------------
+LENDER_ELIGIBILITY: Dict[str, Dict] = {
+    "lender-501-advance": {
+        "display_name": "501 Advance",
+        "min_revenue": 20000,
+        "max_position": 99,
+        "restricted_states": ["CA", "HI", "PR"],
+        "prohibited_keywords": ["commission based", "auto sales", "financial firms", "transportation"],
+    },
+    "lender-advantage-capital-funding": {
+        "display_name": "Advantage Capital Funding",
+        "min_revenue": None,
+        "max_position": 4,
+        "restricted_states": [],
+        "prohibited_keywords": ["adult entertainment", "attorneys", "auto dealer", "trucking", "non-profit", "real estate broker"],
+    },
+    "lender-alternative-funding-group": {
+        "display_name": "Alternative Funding Group",
+        "min_revenue": 30000,
+        "max_position": 4,
+        "restricted_states": ["CA", "NY"],
+        "prohibited_keywords": ["stock broker", "crypto broker", "cash checking", "bail bond"],
+    },
+    "lender-apex-funding-source": {
+        "display_name": "Apex Funding Source",
+        "min_revenue": 100000,
+        "max_position": 6,
+        "restricted_states": ["CA", "NY", "VA", "UT"],
+        "prohibited_keywords": [],
+    },
+    "lender-arsenal-funding": {
+        "display_name": "Arsenal Funding",
+        "min_revenue": None,
+        "max_position": 6,
+        "restricted_states": [],
+        "prohibited_keywords": ["adult entertainment", "bail bond", "car dealer", "gambling", "legal service", "travel agenc"],
+    },
+    "lender-aspire-funding-platform": {
+        "display_name": "Aspire Funding Platform",
+        "min_revenue": None,
+        "max_position": 6,
+        "restricted_states": ["NY"],
+        "prohibited_keywords": ["check cashing", "financial service", "online gambling"],
+    },
+    "lender-aurum-funding": {
+        "display_name": "Aurum Funding",
+        "min_revenue": 30000,
+        "max_position": 10,
+        "restricted_states": [],
+        "prohibited_keywords": ["staffing", "check cashing", "auto sales", "non-profit", "real estate"],
+    },
+    "lender-avanza": {
+        "display_name": "Avanza",
+        "min_revenue": 50000,
+        "max_position": 99,
+        "restricted_states": ["CA"],
+        "prohibited_keywords": ["attorney", "trucking", "auto sales", "vape"],
+    },
+    "lender-backd": {
+        "display_name": "BackD",
+        "min_revenue": 100000,
+        "max_position": 99,
+        "restricted_states": [],
+        "prohibited_keywords": ["pharmacy", "pharmacies", "financial service", "car dealership", "real estate",
+                                "legal service", "non-profit", "adult entertainment", "cannabis", "trucking", "solar", "wholesale"],
+    },
+    "lender-bellwether": {
+        "display_name": "Bellwether",
+        "min_revenue": 40000,
+        "max_position": 99,
+        "restricted_states": [],
+        "prohibited_keywords": ["law", "auto dealer", "real estate", "non-profit"],
+    },
+    "lender-bitty-advance": {
+        "display_name": "Bitty Advance",
+        "min_revenue": 5000,
+        "max_position": 99,
+        "restricted_states": [],
+        "prohibited_keywords": ["bail bond", "crypto", "debt collection", "gambling", "health supplement",
+                                "money service", "non-profit", "psychic", "religious", "sexual"],
+    },
+    "lender-biz-2-credit": {
+        "display_name": "Biz-2-Credit",
+        "min_revenue": 40000,
+        "max_position": 99,
+        "restricted_states": [],
+        "prohibited_keywords": ["used car dealer", "cannabis", "adult entertainment", "real estate investor",
+                                "car service", "construction", "sole prop"],
+    },
+    "lender-bizfund": {
+        "display_name": "BizFund",
+        "min_revenue": 20000,
+        "max_position": 3,
+        "restricted_states": [],
+        "prohibited_keywords": ["car dealership", "adult", "entertainment", "collection agenc", "gambling",
+                                "bail bond", "pawn shop", "nail salon", "real estate"],
+    },
+    "lender-blade": {
+        "display_name": "Blade",
+        "min_revenue": 50000,
+        "max_position": 5,
+        "restricted_states": [],
+        "prohibited_keywords": ["auto dealer", "real estate broker", "cannabis", "financial institution"],
+    },
+    "lender-can-capital": {
+        "display_name": "Can Capital",
+        "min_revenue": None,
+        "max_position": 1,
+        "restricted_states": [],
+        "prohibited_keywords": ["cannabis", "real estate", "transportation", "trucking", "non-profit",
+                                "auto dealer", "adult entertainment", "gambling", "financial service", "legal service"],
+    },
+    "lender-cashable": {
+        "display_name": "Cashable",
+        "min_revenue": 25000,
+        "max_position": 10,
+        "restricted_states": ["HI", "AK", "PR"],
+        "prohibited_keywords": ["financial service", "non-profit", "trucking"],
+    },
+    "lender-cfg-merchant-solutions": {
+        "display_name": "CFG Merchant Solutions",
+        "min_revenue": 10000,
+        "max_position": 4,
+        "restricted_states": [],
+        "prohibited_keywords": [],
+    },
+    "lender-channel": {
+        "display_name": "Channel",
+        "min_revenue": None,
+        "max_position": 2,
+        "restricted_states": [],
+        "prohibited_keywords": [],
+    },
+    "lender-clearfund": {
+        "display_name": "Clearfund",
+        "min_revenue": 100000,
+        "max_position": 5,
+        "restricted_states": [],
+        "prohibited_keywords": [],
+    },
+}
+
+
+def _prefilter_collections(
+    collections: List[str],
+    user_criteria: Dict,
+) -> List[str]:
+    """
+    Deterministically exclude lender collections that hard-fail on user criteria.
+    Returns a filtered list of collection names that could plausibly match.
+    """
+    revenue = user_criteria.get("revenue_monthly")
+    positions = user_criteria.get("positions")
+    state = (user_criteria.get("state") or "").upper().strip()
+    industry = (user_criteria.get("industry") or "").lower().strip()
+
+    next_position = None
+    if positions is not None:
+        try:
+            next_position = int(positions) + 1
+        except (TypeError, ValueError):
+            pass
+
+    passed: List[str] = []
+    for coll in collections:
+        elig = LENDER_ELIGIBILITY.get(coll)
+        if elig is None:
+            passed.append(coll)
+            continue
+
+        # Revenue check: skip if user revenue is set and below lender minimum
+        if revenue is not None and elig.get("min_revenue") is not None:
+            try:
+                if int(revenue) < int(elig["min_revenue"]):
+                    continue
+            except (TypeError, ValueError):
+                pass
+
+        # Position check: skip if user's next position exceeds lender maximum
+        if next_position is not None and elig.get("max_position") is not None:
+            try:
+                if int(next_position) > int(elig["max_position"]):
+                    continue
+            except (TypeError, ValueError):
+                pass
+
+        # State check: skip if user's state is in the restricted list
+        if state and state in elig.get("restricted_states", []):
+            continue
+
+        # Industry check: skip if any prohibited keyword matches the user's industry
+        if industry:
+            prohibited = elig.get("prohibited_keywords", [])
+            if any(kw in industry for kw in prohibited):
+                continue
+
+        passed.append(coll)
+
+    return passed if passed else collections
+
+
 def _invoke_llm(messages: List[Dict], num_ctx: int = 12288, num_predict: int = 512) -> str:
     """Invoke LLM via configured backend (Ollama or Bedrock)."""
     backend = get_backend()
     return backend.invoke(messages, num_ctx=num_ctx, num_predict=num_predict)
 
 
-def _understand_query(query: str) -> Dict:
-    """Extract industry, lender, intent, and deal criteria for prompt context."""
-    backend = get_backend()
-    msg = [{"role": "user", "content": f"""Extract from this lender FAQ query. Return ONLY valid JSON, no other text.
-{{"industry": "industry if mentioned else null", "lender": "lender name if mentioned else null", "intent": "which_lender|eligibility|requirements|restrictions|comparison|other", "revenue_monthly": "monthly revenue number if mentioned else null e.g. 80000", "positions": "number of positions if mentioned else null e.g. 2", "state": "state if mentioned else null e.g. California"}}
+# ---------------------------------------------------------------------------
+# Regex-first fast query parser — eliminates LLM call for most structured queries
+# ---------------------------------------------------------------------------
 
-Use "which_lender" when the user asks which/what lender could fund, who could fund, recommend a lender, or similar.
-Query: {query}"""}]
+_STATE_MAP: Dict[str, str] = {
+    "alabama": "AL", "alaska": "AK", "arizona": "AZ", "arkansas": "AR",
+    "california": "CA", "colorado": "CO", "connecticut": "CT", "delaware": "DE",
+    "florida": "FL", "georgia": "GA", "hawaii": "HI", "idaho": "ID",
+    "illinois": "IL", "indiana": "IN", "iowa": "IA", "kansas": "KS",
+    "kentucky": "KY", "louisiana": "LA", "maine": "ME", "maryland": "MD",
+    "massachusetts": "MA", "michigan": "MI", "minnesota": "MN", "mississippi": "MS",
+    "missouri": "MO", "montana": "MT", "nebraska": "NE", "nevada": "NV",
+    "new hampshire": "NH", "new jersey": "NJ", "new mexico": "NM", "new york": "NY",
+    "north carolina": "NC", "north dakota": "ND", "ohio": "OH", "oklahoma": "OK",
+    "oregon": "OR", "pennsylvania": "PA", "rhode island": "RI", "south carolina": "SC",
+    "south dakota": "SD", "tennessee": "TN", "texas": "TX", "utah": "UT",
+    "vermont": "VT", "virginia": "VA", "washington": "WA", "west virginia": "WV",
+    "wisconsin": "WI", "wyoming": "WY",
+}
+_STATE_ABBRS: set = set(_STATE_MAP.values())
+
+_INDUSTRY_PATTERNS = [
+    (r"\bpharmac(?:y|ies|ist)\b", "pharmacy"),
+    (r"\brestaurant\b|\bdiner\b|\bfood\s+service\b", "restaurant"),
+    (r"\btrucking\b|\bfreight\b|\btruck(?:er|ers)?\b", "trucking"),
+    (r"\bauto\s+(?:dealer|dealership|sales)\b|\bcar\s+dealer\b|\bused\s+car\b", "auto dealership"),
+    (r"\breal\s+estate\b", "real estate"),
+    (r"\binsurance\b", "insurance"),
+    (r"\bveterinar(?:y|ian)\b|\bvet\s+clinic\b|\banimal\s+hospital\b", "veterinary"),
+    (r"\bconstruction\b|\bcontractor\b", "construction"),
+    (r"\b(?:legal|law)\s+(?:firm|service|office)\b|\battorney\b|\blawyer\b", "legal services"),
+    (r"\bmedical\b|\bhealthcare\b|\bhealth\s+care\b|\bclinic\b|\bdental\b", "medical"),
+    (r"\bgrocery\b|\bsupermarket\b", "grocery"),
+    (r"\bsalon\b|\bbarber\b|\bnail\s+salon\b", "salon"),
+    (r"\bcannabis\b|\bmarijuana\b|\bdispensary\b", "cannabis"),
+    (r"\bnon[\s-]profit\b|\bnonprofit\b", "non-profit"),
+    (r"\bstaffing\b|\btemp\s+agency\b", "staffing"),
+    (r"\bsolar\b", "solar"),
+    (r"\btransportation\b", "transportation"),
+    (r"\bgas\s+station\b|\bfuel\b", "gas station"),
+    (r"\bbar\b|\bnightclub\b|\bclub\b", "bar/nightclub"),
+    (r"\beautomotive\b|\bauto\s+repair\b|\bauto\s+body\b", "auto repair"),
+    (r"\bhospital\b|\bnursing\s+home\b|\bsenior\s+care\b", "healthcare facility"),
+]
+
+_WHICH_LENDER_PHRASES = [
+    "who can fund", "which lender", "who could fund", "who would fund",
+    "can fund him", "can fund her", "can fund me", "can fund them",
+    "fund him", "fund her", "fund me", "fund them",
+    "who can help", "looking for funding", "looking to get", "looking for a lender",
+    "best lender", "recommend a lender", "find a lender", "who funds",
+    "which funders", "who to go to", "what lender", "any lender",
+    "need funding", "need a lender", "need financing",
+]
+
+_REQUIREMENTS_PHRASES = [
+    "what do i need", "what is needed", "documentation", "what to send",
+    "how to submit", "what documents", "what do you need", "required documents",
+    "what should i prepare", "what should i send",
+]
+
+_ELIGIBILITY_PHRASES = [
+    "eligible", "qualify", "can i apply", "do i qualify", "am i approved",
+    "will they approve", "can they fund", "does it qualify",
+]
+
+_RESTRICTIONS_PHRASES = [
+    "restrict", "prohibited", "not allowed", "declined", "won't fund",
+    "cannot fund", "does not fund",
+]
+
+# Build lender lookup from LENDER_ELIGIBILITY at module load
+def _build_lender_lookup() -> Dict[str, str]:
+    lookup: Dict[str, str] = {}
+    for slug, info in LENDER_ELIGIBILITY.items():
+        name = info.get("display_name", "")
+        if name:
+            lookup[name.lower()] = name
+        short = slug.replace("lender-", "").replace("-", " ")
+        lookup[short] = name or short.title()
+    return lookup
+
+
+def _parse_query_regex(query: str) -> Dict:
+    """
+    Fast sub-millisecond query parsing via regex patterns.
+    Returns the same shape as _understand_query.
+    Returns None for fields that cannot be reliably determined (triggers LLM fallback).
+    """
+    ql = query.lower().strip()
+    out: Dict = {
+        "industry": None, "lender": None, "intent": "other",
+        "revenue_monthly": None, "positions": None, "state": None,
+        "_regex_confidence": 0,  # internal: how many fields extracted
+    }
+
+    # Intent
+    if any(p in ql for p in _WHICH_LENDER_PHRASES):
+        out["intent"] = "which_lender"
+    elif any(p in ql for p in _REQUIREMENTS_PHRASES):
+        out["intent"] = "requirements"
+    elif any(p in ql for p in _ELIGIBILITY_PHRASES):
+        out["intent"] = "eligibility"
+    elif any(p in ql for p in _RESTRICTIONS_PHRASES):
+        out["intent"] = "restrictions"
+
+    # Revenue: "$80K", "80k", "80,000", "$80,000", "80k per month", "80K monthly"
+    rev = None
+    m = re.search(r"\$?\s*(\d+(?:\.\d+)?)\s*[kK]\b", query)
+    if m:
+        try:
+            rev = int(float(m.group(1)) * 1000)
+        except ValueError:
+            pass
+    if rev is None:
+        m = re.search(r"\$(\d{1,3}(?:,\d{3})+)", query)
+        if m:
+            try:
+                rev = int(m.group(1).replace(",", ""))
+            except ValueError:
+                pass
+    if rev is None:
+        m = re.search(r"(\d{4,7})\s*(?:per\s+month|monthly|/month|/mo)", query, re.IGNORECASE)
+        if m:
+            try:
+                rev = int(m.group(1))
+            except ValueError:
+                pass
+    if rev and rev > 0:
+        out["revenue_monthly"] = rev
+        out["_regex_confidence"] += 1
+
+    # Positions: "2 positions", "two positions", "2 existing positions"
+    pos = None
+    word_to_num = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+                   "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10}
+    m = re.search(r"\b(\d+)\s+(?:current\s+|existing\s+)?position", ql)
+    if m:
+        try:
+            pos = int(m.group(1))
+        except ValueError:
+            pass
+    if pos is None:
+        for word, num in word_to_num.items():
+            if re.search(rf"\b{word}\s+(?:current\s+|existing\s+)?position", ql):
+                pos = num
+                break
+    if pos is not None:
+        out["positions"] = pos
+        out["_regex_confidence"] += 1
+
+    # State: full name first, then 2-letter abbreviation with preposition
+    for name, abbr in _STATE_MAP.items():
+        if re.search(r"\b" + re.escape(name) + r"\b", ql):
+            out["state"] = abbr
+            out["_regex_confidence"] += 1
+            break
+    if not out["state"]:
+        m = re.search(r"\b(?:in|from|based\s+in|located\s+in)\s+([A-Z]{2})\b", query)
+        if m and m.group(1) in _STATE_ABBRS:
+            out["state"] = m.group(1)
+            out["_regex_confidence"] += 1
+
+    # Industry
+    for pattern, name in _INDUSTRY_PATTERNS:
+        if re.search(pattern, ql):
+            out["industry"] = name
+            out["_regex_confidence"] += 1
+            break
+
+    # Lender name lookup
+    lender_lookup = _build_lender_lookup()
+    for token, display in sorted(lender_lookup.items(), key=lambda x: -len(x[0])):
+        if len(token) >= 4 and token in ql:
+            out["lender"] = display
+            out["_regex_confidence"] += 1
+            break
+
+    # Intent upgrade: if intent still "other" but we have structured criteria → which_lender
+    if out["intent"] == "other" and (out["revenue_monthly"] or out["positions"] or out["state"]):
+        kw = ql
+        if any(p in kw for p in ("looking for", "need ", "who can", "which lender", "fund me", "can fund", "funding")):
+            out["intent"] = "which_lender"
+
+    return out
+
+
+def _normalize_revenue(val, query: str) -> Optional[int]:
+    """Normalize revenue_monthly: 90 -> 90000 if query has 90K, 50 -> 50000 if 50K, etc."""
+    if val is None:
+        return None
     try:
-        raw = backend.invoke(msg, num_ctx=4096, num_predict=150)
-        match = re.search(r"\{[^{}]*\}", raw)
-        if match:
-            obj = json.loads(match.group(0))
-            return {
-                "industry": obj.get("industry") or None,
-                "lender": obj.get("lender") or None,
-                "intent": obj.get("intent") or "other",
-                "revenue_monthly": obj.get("revenue_monthly") or None,
-                "positions": obj.get("positions") or None,
-                "state": obj.get("state") or None,
-            }
-    except Exception:
-        pass
-    return {"industry": None, "lender": None, "intent": "other", "revenue_monthly": None, "positions": None, "state": None}
+        n = int(float(val)) if val is not None else None
+    except (TypeError, ValueError):
+        return None
+    if n is None or n <= 0:
+        return None
+    if n >= 1000:
+        return n
+    q = (query or "").lower()
+    m = re.search(rf"\b{n}\s*[kK]\b|\b{n}\s*,\s*000\b", q)
+    if m:
+        return n * 1000
+    return n
+
+
+def _understand_query(query: str, metrics=None) -> Dict:
+    """
+    Extract industry, lender, intent, and deal criteria for prompt context.
+    Uses regex-first fast parsing (<5ms) and falls back to LLM only for ambiguous queries.
+    """
+    t0 = time.perf_counter()
+    fast = _parse_query_regex(query)
+    confidence = fast.pop("_regex_confidence", 0)
+
+    # Use regex result if intent is clear OR we extracted enough structured fields
+    # Skip LLM for: explicit which_lender/requirements/eligibility/restrictions phrasing,
+    # or if we got ≥2 structured fields (revenue, positions, state, industry).
+    use_llm = fast["intent"] == "other" and confidence < 2
+
+    if use_llm:
+        backend = get_backend()
+        msg = [{"role": "user", "content": f"""Extract from this lender FAQ query. Return ONLY valid JSON.
+{{"industry": "industry if mentioned else null", "lender": "lender name if mentioned else null", "intent": "which_lender|eligibility|requirements|restrictions|comparison|other", "revenue_monthly": "number if mentioned else null", "positions": "number if mentioned else null", "state": "2-letter US state code if mentioned else null"}}
+
+Use "which_lender" when user asks who can fund, which lender, or describes business + funding need. Extract only what is stated.
+Query: {query}"""}]
+        out = {k: fast[k] for k in ("industry", "lender", "intent", "revenue_monthly", "positions", "state")}
+        try:
+            raw = backend.invoke(msg, num_ctx=4096, num_predict=150)
+            m = re.search(r"\{[^{}]*\}", raw)
+            if m:
+                obj = json.loads(m.group(0))
+                # Merge: LLM fills gaps, regex values take precedence where already found
+                for k in ("industry", "lender", "revenue_monthly", "positions", "state"):
+                    if out[k] is None:
+                        out[k] = obj.get(k) or None
+                if out["intent"] == "other":
+                    out["intent"] = obj.get("intent") or "other"
+                out["revenue_monthly"] = _normalize_revenue(out.get("revenue_monthly"), query)
+        except Exception:
+            pass
+    else:
+        out = {k: fast[k] for k in ("industry", "lender", "intent", "revenue_monthly", "positions", "state")}
+        out["revenue_monthly"] = _normalize_revenue(out.get("revenue_monthly"), query)
+
+    # Final fallback: funding intent with criteria but missed intent keywords
+    if out["intent"] == "other" and (out["industry"] or out["revenue_monthly"] or out["positions"] or out["state"]):
+        ql = query.lower()
+        if any(p in ql for p in ("looking for", "need ", "who can", "which lender", "fund me", "can fund")):
+            out["intent"] = "which_lender"
+
+    understand_ms = (time.perf_counter() - t0) * 1000
+    if metrics is not None:
+        metrics.understand_ms = round(understand_ms, 2)
+        metrics.understand_used_llm = use_llm
+
+    return out
 
 
 def _format_sources(results: Dict, max_chars_per_doc: int = 2000) -> str:
     lines = []
     for i, (rid, doc, meta) in enumerate(zip(results["ids"][0], results["documents"][0], results["metadatas"][0]), 1):
-        lender = meta.get("lender_name", "?")
+        lender_slug = meta.get("lender_name", "?")
         section = meta.get("section", "")
-        src = f"[S{i}] id={rid} | lender={lender} | section={section}"
+
+        # Build a quick-scan eligibility header from the registry when available
+        elig = LENDER_ELIGIBILITY.get(lender_slug)
+        if elig:
+            display = elig["display_name"]
+            min_rev = f"${elig['min_revenue']:,}/mo" if elig.get("min_revenue") else "no min"
+            max_pos = f"up to {elig['max_position']}th pos" if elig.get("max_position") and elig["max_position"] < 99 else "1st+ pos"
+            restricted = (", ".join(elig["restricted_states"]) or "none")
+            header = f"[S{i}] {display} | Min Rev: {min_rev} | Positions: {max_pos} | Restricted states: {restricted}"
+        else:
+            header = f"[S{i}] id={rid} | lender={lender_slug} | section={section}"
+
         preview = doc if len(doc) <= max_chars_per_doc else doc[:max_chars_per_doc] + "..."
-        lines.append(src + "\n" + preview)
+        lines.append(header + "\n" + preview)
     return "\n\n".join(lines)
 
 def _build_messages(
@@ -78,9 +535,10 @@ def _build_messages(
     background: Optional[str] = None,
 ) -> List[Dict]:
     system = (
-        "You are a financial analyst. Answer ONLY from the Sources below. "
-        "Every factual claim must be supported by and cite a source [S1], [S2], etc. "
-        "Do not infer or add information not present in the sources. Be direct and factual. Output valid JSON only."
+        "You are a trusted financial advisor. Answer ONLY from the Sources below. "
+        "Cite every claim with [S1], [S2]. Never infer or add information not in sources. "
+        "Use EXACT numbers from the source—if it says $75,000/mo write $75,000/mo, not $75k or $100k. Do not round or approximate. "
+        "Be smooth and confident. Use lender names (e.g. Aurum Funding), never slugs. Output valid JSON only."
     )
     focus = ""
     if intent_context:
@@ -91,20 +549,65 @@ def _build_messages(
             if industry:
                 criteria_parts.append(f"industry: {industry}")
             if intent_context.get("revenue_monthly"):
-                criteria_parts.append(f"revenue: ${intent_context['revenue_monthly']}/month")
+                rev = intent_context["revenue_monthly"]
+                try:
+                    criteria_parts.append(f"revenue: ${int(rev):,}/month")
+                except (TypeError, ValueError):
+                    criteria_parts.append(f"revenue: ${rev}/month")
             if intent_context.get("positions"):
                 criteria_parts.append(f"positions: {intent_context['positions']}")
             if intent_context.get("state"):
                 criteria_parts.append(f"state: {intent_context['state']}")
             criteria_str = "; ".join(criteria_parts) if criteria_parts else "see query"
-            focus = f"\nContext: LENDER RECOMMENDATION. User criteria: {criteria_str}. Sources are from multiple lenders. Recommend ONLY lenders whose eligibility matches these criteria. State any restrictions (e.g. California, prohibited industries). If asked about documentation, list required docs per recommended lender.\n"
+
+            position_logic = ""
+            pos_val = intent_context.get("positions")
+            if pos_val is not None:
+                try:
+                    n = int(pos_val)
+                    next_pos = n + 1
+                    position_logic = (
+                        f"\nPOSITION LOGIC: User has {n} existing positions = {next_pos}th position for new funding. "
+                        f"EXCLUDE lenders that: (a) auto-decline {next_pos}+ positions, or (b) only accept 1st through {n}th. "
+                        "Check the source for 'auto decline', 'positions', '1st-3rd' etc. Only recommend if user's position fits.\n"
+                    )
+                except (TypeError, ValueError):
+                    pass
+
+            revenue_logic = ""
+            rev_val = intent_context.get("revenue_monthly")
+            if rev_val is not None:
+                try:
+                    r = int(rev_val)
+                    revenue_logic = (
+                        f"\nREVENUE LOGIC: User has ${r:,}/month revenue. "
+                        f"EXCLUDE lenders whose minimum monthly revenue requirement exceeds ${r:,}. "
+                        "Check the source for 'minimum monthly revenue', 'min revenue', 'average monthly revenue' etc. "
+                        "If the source says minimum $100,000/month and the user has $40,000, EXCLUDE that lender.\n"
+                    )
+                except (TypeError, ValueError):
+                    pass
+
+            focus = (
+                f"\nContext: LENDER RECOMMENDATION. User criteria: {criteria_str}. "
+                f"{position_logic}"
+                f"{revenue_logic}"
+                "Return only the 3–5 BEST matches that clearly fit ALL criteria. Apply judgment—exclude any lender that fails position OR revenue requirements. "
+                "For each lender: COPY the exact position and revenue requirements from the source—do not paraphrase or infer. "
+                "Use lender names (e.g. Cashable, Aspire), not slugs. "
+                "CRITICAL: If source says 'Positions: 1st-3rd' write 1st-3rd; if '$25,000' write $25,000. Never substitute different numbers. "
+                "Intro: Start with user's situation. Format: Brief intro. Then 3–5 recommendations, each one sentence with [S#].\n"
+            )
         elif industry:
-            focus = f"\nContext: The user is asking about {industry} deals. Focus your answer on what applies to {industry} specifically.\n"
+            focus = f"\nContext: {industry} deals. Be concise; cite sources.\n"
         elif intent != "other":
-            focus = f"\nContext: User intent is {intent}. Tailor your answer accordingly.\n"
+            focus = f"\nContext: {intent}. Be concise; cite sources.\n"
+    summary_block = ""
+    if background and background.strip():
+        summary_block = f"\nKey points (distilled):\n{background.strip()}\n\n"
     user = f"""Query: {query}
 {focus}
-Sources:
+{summary_block}Sources:
 {sources_block}
 
 Respond with JSON: {json_schema_hint}
@@ -206,10 +709,34 @@ def _filter_results_by_lender(results: Dict, expected_slug: str) -> Dict:
         return {"ids": [keep_ids], "documents": [keep_docs], "metadatas": [keep_metas]}
     return results
 
+def _dict_literal_to_prose(text: str) -> str:
+    """Convert Python dict literals to readable bullets (e.g. {'lender':'X'} -> - X: ...)."""
+    lines: List[str] = []
+    for ln in text.splitlines():
+        ln = ln.strip()
+        if not ln or ln in ("{", "}"):
+            continue
+        m = re.search(r"['\"]?lender['\"]?\s*:\s*['\"]([^'\"]+)['\"]", ln, re.I)
+        if m:
+            lender = m.group(1)
+            rest = re.sub(r"['\"]?lender['\"]?\s*:\s*[^,}]+", "", ln)
+            rest = re.sub(r"['\"][^'\"]+['\"]\s*:\s*", " ", rest).replace("'", "").replace("{", "").replace("}", "").strip()
+            lines.append(f"- {lender}: {rest}" if rest else f"- {lender}")
+        elif ln.startswith("{") and "lender" in ln.lower():
+            m2 = re.search(r"lender['\"]?\s*:\s*['\"]([^'\"]+)['\"]", ln, re.I)
+            if m2:
+                lines.append(f"- {m2.group(1)}: (see sources)")
+        else:
+            lines.append(ln)
+    return "\n".join(lines) if lines else text
+
+
 def _polish_answer(answer: str) -> str:
-    a = (answer or "").strip()
+    a = "\n".join(str(x) for x in answer).strip() if isinstance(answer, list) else (answer or "").strip()
     if not a:
         return a
+    if re.search(r"\{['\"]?lender['\"]?\s*:", a):
+        a = _dict_literal_to_prose(a)
     cleaned: List[str] = []
     seen: set = set()
     for ln in a.splitlines():
@@ -410,6 +937,7 @@ def _detect_collection_for_query(query: str, chroma_path: str, default_collectio
     stop = {
         "funding", "group", "capital", "financial", "finance", "platform",
         "solutions", "advance", "advances", "business", "credit", "loans", "loan",
+        "merchant", "based", "looking", "making", "revenue", "positions",
     }
     q_tokens = [t for t in q_tokens if t not in stop]
     q_set = set(q_tokens)
@@ -453,16 +981,28 @@ def _get_lender_collections(chroma_path: str) -> List[str]:
 def _multi_collection_search(
     query_text: str,
     chroma_path: str,
-    n_per_collection: int = 2,
-    n_total: int = 12,
+    n_per_collection: int = 3,
+    n_total: int = 14,
+    max_per_lender: int = 2,
+    user_criteria: Optional[Dict] = None,
     metrics_callback: Optional[Callable[[Dict], None]] = None,
 ) -> Dict:
-    """Search across all lender collections, merge and rank by relevance."""
+    """Search across all lender collections, merge by relevance, enforce lender diversity."""
     import time as _time
+
     t0 = _time.perf_counter()
     collections = _get_lender_collections(chroma_path)
     if not collections:
         return {"ids": [[]], "documents": [[]], "metadatas": [[]]}
+
+    # Deterministic pre-filter: skip lenders that hard-fail user criteria
+    if user_criteria:
+        before = len(collections)
+        collections = _prefilter_collections(collections, user_criteria)
+        skipped = before - len(collections)
+        if skipped:
+            logger = logging.getLogger(__name__)
+            logger.info(f"[prefilter] Skipped {skipped} of {before} lender collections based on user criteria")
 
     all_ids: List[str] = []
     all_docs: List[str] = []
@@ -476,7 +1016,7 @@ def _multi_collection_search(
                 collection_name=coll_name,
                 chroma_path=chroma_path,
                 n_results=n_per_collection,
-                mmr=True,
+                mmr=False,
                 rerank=False,
                 expand_neighbors=0,
             )
@@ -492,10 +1032,20 @@ def _multi_collection_search(
         except Exception:
             continue
 
-    # Sort by distance (lower = more relevant)
+    # Sort by distance (lower = more relevant), then apply lender diversity cap
     if all_distances:
         order = sorted(range(len(all_distances)), key=lambda i: all_distances[i])
-        keep = order[:n_total]
+        lender_counts: Dict[str, int] = {}
+        keep: List[int] = []
+        for i in order:
+            if len(keep) >= n_total:
+                break
+            meta = all_metas[i]
+            lender = (meta.get("lender_name") or "?") if isinstance(meta, dict) else "?"
+            cnt = lender_counts.get(lender, 0)
+            if cnt < max_per_lender:
+                keep.append(i)
+                lender_counts[lender] = cnt + 1
         all_ids = [all_ids[i] for i in keep]
         all_docs = [all_docs[i] for i in keep]
         all_metas = [all_metas[i] for i in keep]
@@ -536,7 +1086,7 @@ def answer_query(
     m.run_id = str(uuid.uuid4())[:8]
 
     # 0) Query understanding (industry, lender, intent) for prompt context + retrieval
-    intent_context = _understand_query(query)
+    intent_context = _understand_query(query, metrics=m)
 
     # Expand search query with extracted criteria (improves retrieval relevance)
     search_query = query
@@ -545,8 +1095,10 @@ def answer_query(
         extras.append(f"{intent_context['industry']} industry eligibility")
     if intent_context.get("state"):
         extras.append(f"{intent_context['state']} state restrictions")
-    if intent_context.get("revenue_monthly") or intent_context.get("positions"):
-        extras.append("revenue positions requirements")
+    if intent_context.get("revenue_monthly"):
+        extras.append("revenue minimum monthly requirements")
+    if intent_context.get("positions") is not None:
+        extras.append("positions auto decline eligibility")
     if extras:
         search_query = f"{query} {' '.join(extras)}"
 
@@ -571,7 +1123,9 @@ def answer_query(
             query_text=search_query,
             chroma_path=chroma_path,
             n_per_collection=2,
-            n_total=min(n_results * 2, 14),
+            n_total=min(n_results * 2, 10),
+            max_per_lender=1,
+            user_criteria=intent_context,
             metrics_callback=on_retrieval,
         )
         # No lender filter—we want docs from multiple lenders
@@ -610,11 +1164,20 @@ def answer_query(
     # 2) Compact sources for prompt
     sources_block = _format_sources(results, max_chars_per_doc=max_chars_per_doc)
 
-    # Background and distilled bullets intentionally disabled to avoid mixing
+    # Distilled bullets for which_lender multi-lender: gives LLM a compact overview before full sources
     background = None
+    if use_multi_lender and intent_context.get("intent") == "which_lender":
+        background = _distill_sources(results, max_bullets=25)
 
-    # 3) Ask LLM for minimal structured JSON (answer + used_sources)
-    json_schema_hint = '{"answer": "your answer here. Use [S1], [S2] to cite sources.", "used_sources": 0}'
+    # 3) Ask LLM for structured JSON. Two-field schema for which_lender forces complete lender list.
+    use_two_field = use_multi_lender and intent_context.get("intent") == "which_lender"
+    if use_two_field:
+        json_schema_hint = (
+            '{"intro": "Direct intro.", "lenders": ["Lender [S#]: copy exact positions + revenue from source, then fit note."], '
+            '"used_sources": 0}'
+        )
+    else:
+        json_schema_hint = '{"answer": "chat-style reply with [S#] citations.", "used_sources": 0}'
     messages = _build_messages(query, sources_block, json_schema_hint, intent_context=intent_context, background=background)
     prompt_text = " ".join(str(m.get("content", "")) for m in messages)
     m.prompt_tokens_approx = _approx_tokens(prompt_text)
@@ -685,13 +1248,28 @@ def answer_query(
         else:
             obj = {"answer": raw, "used_sources": 0}
 
-    # Unwrap double-encoded answer (model sometimes returns JSON string inside answer)
-    answer_text = (obj.get("answer") or "").strip()
-    if answer_text.startswith("{") and '"answer"' in answer_text[:200]:
+    # Unwrap answer: support two-field (intro + lenders) or single-field (answer)
+    raw_ans = obj.get("answer")
+    intro = (obj.get("intro") or "").strip() if isinstance(obj.get("intro"), str) else ""
+    lenders = obj.get("lenders") if isinstance(obj.get("lenders"), list) else []
+
+    if intro or lenders:
+        parts = []
+        if intro:
+            parts.append(intro)
+        if lenders:
+            parts.append("\n".join(str(x).strip() for x in lenders if x))
+        answer_text = "\n\n".join(parts).strip()
+    elif isinstance(raw_ans, list):
+        answer_text = "\n".join(str(x) for x in raw_ans).strip()
+    else:
+        answer_text = (raw_ans or "").strip() if isinstance(raw_ans, str) else ""
+    if answer_text and answer_text.startswith("{") and '"answer"' in answer_text[:200]:
         try:
             inner = json.loads(answer_text)
             if isinstance(inner, dict) and "answer" in inner:
-                answer_text = (inner.get("answer") or "").strip()
+                a = inner.get("answer")
+                answer_text = "\n".join(str(x) for x in a).strip() if isinstance(a, list) else (a or "").strip()
         except Exception:
             pass
 
@@ -711,13 +1289,16 @@ def answer_query(
     # Faithfulness: NLI entailment (answer grounded in sources)
     if compute_faithfulness and results and answer_text:
         try:
-            score, unsupported, elapsed = compute_faithfulness(answer_text, results)
+            score, unsupported, elapsed = _compute_faithfulness_score(answer_text, results)
             m.faithfulness = score
             m.faithfulness_ms = elapsed
             m.unsupported_sentences = unsupported if unsupported else None
-        except Exception:
+        except Exception as e:
+            err_msg = str(e)
+            get_logger("faithfulness").warning("Faithfulness computation failed: %s", err_msg)
             m.faithfulness = None
             m.faithfulness_ms = 0.0
+            m.faithfulness_error = err_msg[:200]
             m.unsupported_sentences = None
 
     notify("on_pipeline_end", m)

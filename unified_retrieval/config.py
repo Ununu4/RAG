@@ -55,6 +55,13 @@ class RAGConfig:
             self.max_chars_per_doc = 1200
             self.num_ctx = 8192
             self.num_predict = 384
+        elif self.tier == "balanced":
+            self.n_results = 6
+            self.expand_neighbors = 1
+            self.use_rerank = False
+            self.max_chars_per_doc = 1500
+            self.num_ctx = 8192
+            self.num_predict = 700
         elif self.tier == "full":
             self.n_results = 8
             self.expand_neighbors = 2

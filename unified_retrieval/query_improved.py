@@ -14,11 +14,50 @@ DEFAULT_CHROMA = r"C:\Users\ottog\desktop\Chromaa"
 EMBED_MODEL = "sentence-transformers/multi-qa-MiniLM-L6-cos-v1"  # matches indexing
 RERANK_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
+_ST_MODEL: Optional[SentenceTransformer] = None
+_CE_MODEL: Optional[CrossEncoder] = None
+_CHROMA_EMBED_FN = None
+_CHROMA_CLIENTS: Dict[str, "PersistentClient"] = {}
+
+
+def _get_chroma_client(path: str):
+    """Cached Chroma client per path (avoids repeated client creation in multi-collection)."""
+    global _CHROMA_CLIENTS
+    if path not in _CHROMA_CLIENTS:
+        _CHROMA_CLIENTS[path] = PersistentClient(path=path)
+    return _CHROMA_CLIENTS[path]
+
+
+def _get_chroma_embed_fn():
+    """Cached Chroma embedding function (avoids N model loads for N collections)."""
+    global _CHROMA_EMBED_FN
+    if _CHROMA_EMBED_FN is None:
+        _CHROMA_EMBED_FN = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=EMBED_MODEL)
+    return _CHROMA_EMBED_FN
+
+
+def _get_embed_model() -> SentenceTransformer:
+    """Cached SentenceTransformer to avoid repeated loads (critical for multi-collection)."""
+    global _ST_MODEL
+    if _ST_MODEL is None:
+        _ST_MODEL = SentenceTransformer(EMBED_MODEL)
+    return _ST_MODEL
+
+
+def _get_rerank_model() -> Optional[CrossEncoder]:
+    """Cached CrossEncoder for reranking."""
+    global _CE_MODEL
+    if _CE_MODEL is None:
+        try:
+            _CE_MODEL = CrossEncoder(RERANK_MODEL)
+        except Exception:
+            return None
+    return _CE_MODEL
+
 
 def _get_collection(path: str, name: str):
-    client = PersistentClient(path=path)
-    ef = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=EMBED_MODEL)
-    return client.get_collection(name, embedding_function=ef)
+    client = _get_chroma_client(path)
+    return client.get_collection(name, embedding_function=_get_chroma_embed_fn())
 
 
 def _cos_sim(a: np.ndarray, b: np.ndarray) -> float:
@@ -68,39 +107,55 @@ def semantic_query(
 
     col = _get_collection(chroma_path, collection_name)
 
-    # Fetch a larger candidate pool
-    candidate_k = max(n_results * 5, 20)
-    base = col.query(query_texts=[query_text], n_results=candidate_k)
+    # Fetch candidate pool: larger for MMR, minimal when MMR disabled (multi-collection speed)
+    candidate_k = max(n_results * 5, 20) if mmr else n_results
+    base = col.query(
+        query_texts=[query_text],
+        n_results=candidate_k,
+        include=["metadatas", "documents", "distances"],
+    )
     embed_calls += 1  # Chroma uses embedding fn for query
 
     ids = base["ids"][0]
     docs = base["documents"][0]
     metas = base["metadatas"][0]
+    dists = base.get("distances", [[0.0] * len(ids)])[0] if base.get("ids") else []
+    if len(dists) != len(ids):
+        dists = [0.0] * len(ids)
     n_after_base = len(ids)
 
     # MMR diversity on SentenceTransformer embeddings
     if mmr and ids:
-        st = SentenceTransformer(EMBED_MODEL)
+        st = _get_embed_model()
         q_emb = st.encode(query_text)
         d_embs = st.encode(docs)
         embed_calls += 1 + 1  # query + docs
         pick = _mmr(q_emb, list(d_embs), k=min(len(ids), max(n_results * 2, 10)))
-        ids, docs, metas = [ids[i] for i in pick], [docs[i] for i in pick], [metas[i] for i in pick]
+        ids = [ids[i] for i in pick]
+        docs = [docs[i] for i in pick]
+        metas = [metas[i] for i in pick]
+        dists = [dists[i] for i in pick]
     n_after_mmr = len(ids)
 
     # Cross-encoder rerank for precision
     if rerank and ids:
-        try:
-            ce = CrossEncoder(RERANK_MODEL)
-            scores = ce.predict([[query_text, d] for d in docs])
-            ce_calls += len(docs)
-            order = list(np.argsort(scores)[::-1])[:n_results]
-            ids, docs, metas = [ids[i] for i in order], [docs[i] for i in order], [metas[i] for i in order]
-        except Exception as e:
-            print(f"Warning: cross-encoder rerank failed ({e}); using pre-rerank order")
-            ids, docs, metas = ids[:n_results], docs[:n_results], metas[:n_results]
+        ce = _get_rerank_model()
+        if ce is not None:
+            try:
+                scores = ce.predict([[query_text, d] for d in docs])
+                ce_calls += len(docs)
+                order = list(np.argsort(scores)[::-1])[:n_results]
+                ids = [ids[i] for i in order]
+                docs = [docs[i] for i in order]
+                metas = [metas[i] for i in order]
+                dists = [dists[i] for i in order]
+            except Exception as e:
+                print(f"Warning: cross-encoder rerank failed ({e}); using pre-rerank order")
+                ids, docs, metas, dists = ids[:n_results], docs[:n_results], metas[:n_results], dists[:n_results]
+        else:
+            ids, docs, metas, dists = ids[:n_results], docs[:n_results], metas[:n_results], dists[:n_results]
     else:
-        ids, docs, metas = ids[:n_results], docs[:n_results], metas[:n_results]
+        ids, docs, metas, dists = ids[:n_results], docs[:n_results], metas[:n_results], dists[:n_results]
     n_after_rerank = len(ids)
 
     # Optional neighbor expansion using prev_id/next_id hints stored at ingest
@@ -142,6 +197,7 @@ def semantic_query(
             ids.extend(_flatten_field(got.get("ids", [])))
             docs.extend(_flatten_field(got.get("documents", [])))
             metas.extend(_flatten_field(got.get("metadatas", [])))
+            dists.extend([1.0] * len(filtered))  # no distance for neighbors; sort last
 
     n_after_expand = len(ids)
     retrieval_ms = (time.perf_counter() - t0) * 1000
@@ -157,7 +213,7 @@ def semantic_query(
             "cross_encoder_calls": ce_calls,
         })
 
-    return {"ids": [ids], "documents": [docs], "metadatas": [metas], "distances": [[0.0] * len(ids)]}
+    return {"ids": [ids], "documents": [docs], "metadatas": [metas], "distances": [dists]}
 
 
 def print_results(results: Dict, query_text: str, show_full: bool = False):

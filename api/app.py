@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -16,7 +17,7 @@ if str(_ROOT) not in sys.path:
 if str(_ROOT / "unified_retrieval") not in sys.path:
     sys.path.insert(0, str(_ROOT / "unified_retrieval"))
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from chromadb import PersistentClient
@@ -41,8 +42,10 @@ def _list_collections():
 
 
 class QueryRequest(BaseModel):
-    query: str = Field(..., min_length=1)
-    collection: str | None = Field(None, description="Lender name: 'bitty', 'alternative-funding-group', or null for auto-detect")
+    """Request body for /query. Send as JSON: {"query": "...", "collection": null, "tier": "minimal"}"""
+
+    query: str = Field(..., min_length=1, description="Your question (e.g. 'Who can fund a restaurant in California?')")
+    collection: str | None = Field(None, description="Lender name: 'bitty', 'alternative-funding-group', or null for multi-lender")
     tier: str = Field("minimal", description="minimal (fast), balanced, full (best quality)")
 
 
@@ -51,11 +54,14 @@ class QueryResponse(BaseModel):
     used_sources: int
     collection: str
     run_id: str | None = None
+    understand_ms: float | None = None
+    understand_used_llm: bool | None = None
     retrieval_ms: float | None = None
     llm_ms: float | None = None
     total_ms: float | None = None
     faithfulness: float | None = None
     faithfulness_ms: float | None = None
+    faithfulness_error: str | None = None
 
 
 @app.get("/health")
@@ -102,23 +108,47 @@ def metrics(limit: int = 100):
     if not history:
         return {"count": 0, "message": "No metrics yet. Run /query to populate."}
 
-    total_ms = [h.get("retrieval_ms", 0) + h.get("llm_ms", 0) for h in history if isinstance(h.get("retrieval_ms"), (int, float)) and isinstance(h.get("llm_ms"), (int, float))]
+    understand_ms = [h["understand_ms"] for h in history if isinstance(h.get("understand_ms"), (int, float))]
     retrieval_ms = [h["retrieval_ms"] for h in history if isinstance(h.get("retrieval_ms"), (int, float))]
     llm_ms = [h["llm_ms"] for h in history if isinstance(h.get("llm_ms"), (int, float))]
+    faith_ms = [h["faithfulness_ms"] for h in history if isinstance(h.get("faithfulness_ms"), (int, float))]
+    total_ms = [
+        h.get("understand_ms", 0) + h.get("retrieval_ms", 0) + h.get("llm_ms", 0) + h.get("faithfulness_ms", 0)
+        for h in history
+        if isinstance(h.get("retrieval_ms"), (int, float)) and isinstance(h.get("llm_ms"), (int, float))
+    ]
     faithfulness_scores = [h["faithfulness"] for h in history if isinstance(h.get("faithfulness"), (int, float))]
+    llm_calls = [h for h in history if h.get("understand_used_llm")]
 
     out = {
         "count": len(history),
         "latency_ms": {
-            "total": {"avg": sum(total_ms) / len(total_ms) if total_ms else 0, "p50": _percentile(total_ms, 50), "p95": _percentile(total_ms, 95)},
+            "total_wall_clock": {"avg": sum(total_ms) / len(total_ms) if total_ms else 0, "p50": _percentile(total_ms, 50), "p95": _percentile(total_ms, 95)},
+            "understand": {"avg": sum(understand_ms) / len(understand_ms) if understand_ms else 0, "llm_fallback_pct": round(len(llm_calls) / len(history) * 100, 1) if history else 0},
             "retrieval": {"avg": sum(retrieval_ms) / len(retrieval_ms) if retrieval_ms else 0},
             "llm": {"avg": sum(llm_ms) / len(llm_ms) if llm_ms else 0},
+            "faithfulness": {"avg": sum(faith_ms) / len(faith_ms) if faith_ms else 0},
         },
         "recent": history[-10:],
     }
     if faithfulness_scores:
         out["faithfulness"] = {"avg": sum(faithfulness_scores) / len(faithfulness_scores), "count": len(faithfulness_scores)}
     return out
+
+
+@app.middleware("http")
+async def sanitize_json_body_middleware(request: Request, call_next):
+    """Replace control chars in POST /query body so JSON parses; restores Swagger schema."""
+    if request.url.path == "/query" and request.method == "POST":
+        body = await request.body()
+        text = body.decode("utf-8", errors="replace")
+        sanitized = re.sub(r"[\x00-\x1f]", " ", text)
+
+        async def receive():
+            return {"type": "http.request", "body": sanitized.encode("utf-8")}
+
+        request = Request(request.scope, receive)
+    return await call_next(request)
 
 
 @app.post("/query", response_model=QueryResponse)
@@ -148,7 +178,8 @@ def query(req: QueryRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
     j = out.get("json", {})
-    ans = (out.get("answer_text", "") or "").strip()
+    ans_raw = out.get("answer_text", "") or ""
+    ans = "\n".join(str(x) for x in ans_raw).strip() if isinstance(ans_raw, list) else (ans_raw or "").strip()
     try:
         used = int(j.get("used_sources", 0))
     except (TypeError, ValueError):
@@ -157,21 +188,30 @@ def query(req: QueryRequest):
     m = out.get("metrics")
     run_id = m.run_id if m else None
     collection = m.collection if m else (req.collection or "unknown")
+    understand_ms = m.understand_ms if m else None
+    understand_used_llm = m.understand_used_llm if m else None
     retrieval_ms = m.retrieval_ms if m else None
     llm_ms = m.llm_ms if m else None
-    total_ms = (retrieval_ms + llm_ms) if (retrieval_ms is not None and llm_ms is not None) else None
+    total_ms = (
+        (understand_ms or 0) + (retrieval_ms or 0) + (llm_ms or 0) + (m.faithfulness_ms or 0)
+        if m else None
+    )
 
     faithfulness = m.faithfulness if m else None
     faithfulness_ms = m.faithfulness_ms if (m and m.faithfulness is not None) else None
+    faithfulness_error = m.faithfulness_error if m else None
 
     return QueryResponse(
         answer=ans,
         used_sources=used,
         collection=collection,
         run_id=run_id,
+        understand_ms=understand_ms,
+        understand_used_llm=understand_used_llm,
         retrieval_ms=retrieval_ms,
         llm_ms=llm_ms,
         total_ms=total_ms,
         faithfulness=faithfulness,
         faithfulness_ms=faithfulness_ms,
+        faithfulness_error=faithfulness_error,
     )

@@ -35,6 +35,10 @@ class PipelineMetrics:
     retrieval_after_filter: int = 0
     retrieval_ms: float = 0.0
 
+    # Query understanding stage
+    understand_ms: float = 0.0
+    understand_used_llm: bool = False
+
     # LLM stage
     prompt_tokens_approx: int = 0
     completion_tokens_approx: int = 0
@@ -48,6 +52,7 @@ class PipelineMetrics:
     # Faithfulness (NLI entailment: answer grounded in sources)
     faithfulness: Optional[float] = None
     faithfulness_ms: float = 0.0
+    faithfulness_error: Optional[str] = None
     unsupported_sentences: Optional[list] = None
 
     # Cost proxies (for scaling decisions)
